@@ -22,6 +22,7 @@ const required = [
   'lib/index.d.ts', 'lib/client.js', 'assets/dashboard-light.png',
   'assets/dashboard-dark.png', 'assets/dashboard-light-full.png',
   'assets/dashboard-dark-full.png',
+  'assets/usage-demo.gif',
 ]
 for (const file of required) {
   if (!files.has(file)) throw new Error(`Published package is missing ${file}`)

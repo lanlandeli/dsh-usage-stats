@@ -33,6 +33,7 @@
     "SECURITY.md",
     "docs/COMPATIBILITY.md",
     "assets/*.png",
+    "assets/*.gif",
     "LICENSE"
   ],
   "scripts": {
