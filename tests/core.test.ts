@@ -101,4 +101,31 @@ describe('usage statistics core', () => {
     expect(result.allTime.totals).toMatchObject({ tokens: 340, messages: 4, activeDays: 2, sessions: 1 })
     expect(result.allTime.mostUsedModel).toMatchObject({ model: 'deepseek-chat', tokens: 340 })
   })
+
+  it('excludes the inherited fork seed from child session usage', () => {
+    const childHeader = { ...header, id: 's-child', parentSession: 's-main' } as unknown as SessionHeader
+    const seedAssistant = assistant(1, '2026-08-01T01:00:00Z')
+    const endSeed = { type: 'session/end-seed', seq: 2, time: Date.parse('2026-08-01T01:00:01Z'), data: {} } as unknown as SessionEvent
+    const ownAssistant = assistant(3, '2026-08-01T01:00:02Z')
+
+    const summary = summarizeSession(childHeader, [seedAssistant, endSeed, ownAssistant])
+    expect(summary.activities).toHaveLength(1)
+    expect(summary.activities[0]).toMatchObject({ seq: 3, kind: 'assistant' })
+
+    const result = aggregateStats([summary], { from: '2026-08-01', to: '2026-08-01', timeZone: 'UTC', scope: 'subtasks' })
+    expect(result.totals).toMatchObject({ tokens: 170, messages: 1 })
+    expect(result.days[0]?.calls).toBe(1)
+  })
+
+  it('keeps root-session usage even when the log carries seed-boundary events', () => {
+    const endSeed = { type: 'session/end-seed', seq: 1, time: Date.parse('2026-08-01T01:00:01Z'), data: {} } as unknown as SessionEvent
+    const summary = summarizeSession(header, [assistant(0, '2026-08-01T01:00:00Z'), endSeed, assistant(2, '2026-08-01T01:00:02Z')])
+    expect(summary.activities).toHaveLength(2)
+  })
+
+  it('attributes nothing to a child session without a seed boundary marker', () => {
+    const childHeader = { ...header, id: 's-child', parentSession: 's-main' } as unknown as SessionHeader
+    const summary = summarizeSession(childHeader, [assistant(1, '2026-08-01T01:00:00Z'), assistant(2, '2026-08-01T01:00:01Z')])
+    expect(summary.activities).toHaveLength(0)
+  })
 })

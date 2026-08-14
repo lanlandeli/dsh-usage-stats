@@ -28,7 +28,8 @@ export interface SessionSummary {
 }
 
 export interface IndexCache {
-  schema: 1
+  /** Schema 2: child sessions exclude their inherited fork seed. */
+  schema: 2
   sessions: SessionSummary[]
 }
 

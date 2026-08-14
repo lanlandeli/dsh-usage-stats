@@ -64,7 +64,9 @@ function parseQuery(req: IncomingMessage): StatsQuery {
 function isCache(value: unknown): value is IndexCache {
   if (typeof value !== 'object' || value === null) return false
   const record = value as Partial<IndexCache>
-  return record.schema === 1 && Array.isArray(record.sessions)
+  // Schema 2: child-session summaries exclude their inherited fork seed, so
+  // the previous schema's child activities must not be trusted.
+  return record.schema === 2 && Array.isArray(record.sessions)
 }
 
 class UsageIndex {
@@ -150,7 +152,7 @@ class UsageIndex {
   }
 
   private async persist(): Promise<void> {
-    const data: IndexCache = { schema: 1, sessions: [...this.sessions.values()] }
+    const data: IndexCache = { schema: 2, sessions: [...this.sessions.values()] }
     const temporary = `${this.cachePath}.${process.pid}.tmp`
     await mkdir(dirname(this.cachePath), { recursive: true })
     await writeFile(temporary, JSON.stringify(data), { encoding: 'utf8', mode: 0o600 })

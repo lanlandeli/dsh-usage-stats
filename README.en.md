@@ -54,7 +54,7 @@ dsh plugin --profile web remove dsh-usage-stats
 | **Overview** | Lifetime token, session, message, active-day, streak, and top-model totals |
 | **Daily trends** | Recent 7-day or 30-day token usage with per-model hover details |
 | **Activity heatmap** | One year of activity levels with daily token and call details |
-| **Scope filters** | Filter by workspace, main task, or subtask |
+| **Scope filters** | Filter by workspace, main task, or subtask; subtask (subagent) figures count only calls the child produced itself, excluding the checkpoint context inherited from its parent |
 | **Data export** | Export CSV or JSON for archival or further analysis |
 | **Theme support** | Follow the Harness light or dark theme automatically |
 | **Lightweight runtime** | No third-party charting library and no background polling |

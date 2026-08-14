@@ -11,6 +11,23 @@ import type {
 
 const ZERO_TOKENS = (): TokenBreakdown => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 })
 
+/**
+ * DSH marks the end of an injected seed (fork/checkpoint recovery or a
+ * subagent activation) with a `session/end-seed` event; the subagent provider
+ * also appends `subagent/descriptor` right after the seed. For child sessions
+ * the seeded prefix is a COPY of the parent's log, so its usage must never be
+ * attributed to the child.
+ */
+const SEED_BOUNDARY_EVENTS = new Set(['session/end-seed', 'subagent/descriptor'])
+
+/** Index of the last seed-boundary event, or -1 when the log has none. */
+function lastSeedBoundaryIndex(events: readonly SessionEvent[]): number {
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    if (SEED_BOUNDARY_EVENTS.has(events[index]?.type ?? '')) return index
+  }
+  return -1
+}
+
 function finiteCount(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0
 }
@@ -38,9 +55,15 @@ export function activityFromEvent(event: SessionEvent): ActivityRecord | null {
 }
 
 export function summarizeSession(header: SessionHeader, events: readonly SessionEvent[], indexedAt = Date.now()): SessionSummary {
+  // Child sessions open with a copied prefix of the parent's log (the fork
+  // seed). Only events after the last seed boundary belong to the child
+  // itself; without a boundary marker the child log is indistinguishable
+  // from its seed, so nothing is attributed to it (conservative).
+  const boundary = header.parentSession !== undefined ? lastSeedBoundaryIndex(events) : 0
+  const startIndex = header.parentSession !== undefined ? (boundary >= 0 ? boundary + 1 : events.length) : 0
   const activities: ActivityRecord[] = []
-  for (const event of events) {
-    const activity = activityFromEvent(event)
+  for (let index = startIndex; index < events.length; index += 1) {
+    const activity = activityFromEvent(events[index]!)
     if (activity !== null) activities.push(activity)
   }
   const summary: SessionSummary = {
