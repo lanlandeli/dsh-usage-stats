@@ -26,6 +26,8 @@ const required = [
 for (const file of required) {
   if (!files.has(file)) throw new Error(`Published package is missing ${file}`)
 }
-const forbidden = [...files].filter(file => /^(src|tests|scripts|node_modules)\//.test(file) || /\.(?:tgz|log)$/.test(file))
+const forbidden = [...files].filter(file => /^(src|tests|scripts|node_modules)\//.test(file)
+  || /^README\.draft\.md$/i.test(file)
+  || /\.(?:tgz|log)$/.test(file))
 if (forbidden.length > 0) throw new Error(`Unexpected published files: ${forbidden.join(', ')}`)
 console.log(`Package contents verified: ${files.size} files, no source/cache/log leakage.`)
