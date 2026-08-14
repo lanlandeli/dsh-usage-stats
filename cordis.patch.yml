@@ -1,0 +1,8 @@
+- insert:
+    - id: usage-stats
+      name: dsh-usage-stats
+      inject: [sessionQuery, webServer]
+      config:
+        indexConcurrency: 2
+        cacheWriteDelayMs: 1000
+        apiPath: /usage-stats/v1

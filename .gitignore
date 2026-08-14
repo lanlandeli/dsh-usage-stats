@@ -1,0 +1,8 @@
+node_modules/
+lib/
+*.tgz
+*.log
+/*.png
+.DS_Store
+.tmp-*/
+coverage/
