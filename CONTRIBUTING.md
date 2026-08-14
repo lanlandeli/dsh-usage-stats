@@ -1,25 +1,23 @@
-# Contributing
+# 开发说明
 
-## Setup
+## 本地环境
 
-Use Node.js 22.19+ or 24+:
+使用 Node.js 22.19+ 或 24+：
 
 ```sh
 npm ci
 npm run check
 ```
 
-## Pull requests
+## 修改要求
 
-- Keep Host code independent of Harness Web UI DOM structure.
-- Use public Harness services and UI slots only.
-- Update both `README.md` and `README.zh-CN.md` for user-facing behavior.
-- Add tests for metric or filtering changes.
-- Do not retain event bodies, prompts, responses, tool arguments, credentials,
-  or file contents.
-- Run `npm run release:check` before requesting review.
+- Host 代码不得依赖 Harness Web UI 的 DOM 结构；
+- 仅使用 Harness 公开服务与 UI 插槽；
+- 用户可见行为变化时同步更新 `README.md` 与 `README.en.md`；
+- 统计逻辑或筛选行为变化时添加对应测试；
+- 不保存事件正文、提示词、回复、工具参数、凭据或文件内容；
+- 提交前运行 `npm run release:check`。
 
-## Releases
+## 发布检查
 
-Update `CHANGELOG.md`, bump the version once, run the clean-profile smoke test,
-and publish from a protected tag through npm Trusted Publishing.
+发布前更新 `CHANGELOG.md` 与版本号，并运行全新 Profile 冒烟测试。正式版本通过 npm Trusted Publishing 发布。

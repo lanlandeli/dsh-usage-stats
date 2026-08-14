@@ -3,6 +3,17 @@
 All notable changes are documented here. This project follows Semantic
 Versioning while DeepSeek Harness remains in developer preview.
 
+## [0.1.12] - 2026-08-14
+
+### Changed
+
+- Reworked the Chinese and English README files with a concise feature overview,
+  installation instructions, troubleshooting guidance, and anonymous examples.
+- Replaced preview assets with a smoother light-theme demo and complete anonymous
+  light/dark screenshots.
+- Aligned privacy, security, compatibility, and development documents with the
+  current plugin behavior and Chinese-first documentation.
+
 ## [0.1.11] - 2026-08-14
 
 ### Fixed

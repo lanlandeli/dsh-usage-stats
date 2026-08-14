@@ -1,97 +1,65 @@
-# dsh-usage-stats
+# 📊 dsh-usage-stats
 
 [English](./README.en.md)
 
-> 你的 DeepSeek Harness，Token 都用在哪了？
+> DeepSeek Harness Token 使用情况，一目了然。
 
 [![npm version](https://img.shields.io/npm/v/dsh-usage-stats?style=flat-square&logo=npm)](https://www.npmjs.com/package/dsh-usage-stats)
 [![npm downloads](https://img.shields.io/npm/dm/dsh-usage-stats?style=flat-square)](https://www.npmjs.com/package/dsh-usage-stats)
 [![CI](https://img.shields.io/github/actions/workflow/status/lanlandeli/dsh-usage-stats/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/lanlandeli/dsh-usage-stats/actions)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.19%20%7C%7C%20%3E%3D24-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![License](https://img.shields.io/npm/l/dsh-usage-stats?style=flat-square)](./LICENSE)
 
-**dsh-usage-stats** 为 DeepSeek Harness 增加一个清晰、好看的使用统计面板。
-Token 总量、近期趋势、活跃日期和模型占比，打开一次就能看明白。
+dsh-usage-stats 是面向 DeepSeek Harness Web UI 的轻量使用统计插件，用于集中展示 Token 总量、每日趋势、活跃日期及模型分布。
+
+插件通过 Harness 提供的扩展接口集成，不修改 Web UI 或官方 npm 包。统计数据保存在本机。
 
 ```sh
 dsh plugin --profile web add dsh-usage-stats
 ```
 
-重启 WebUI 后，在侧边栏“设置”上方点击 **使用统计**。
+重启 Web Profile 后，侧边栏「设置」上方会出现 **使用统计**。
 
-![使用统计演示](./assets/usage-demo.gif)
+更新或卸载：
 
-## 你可以看到什么
+```sh
+dsh plugin --profile web update dsh-usage-stats
+dsh plugin --profile web remove dsh-usage-stats
+```
 
-| | 功能 | 用途 |
-| --- | --- | --- |
-| 📊 | **使用总览** | 查看 Token、会话、消息、活跃天数和最常用模型 |
-| 📈 | **近期趋势** | 对比最近 7 天或 30 天的每日 Token 用量 |
-| 🔥 | **活跃热力图** | 快速找到一年中使用最多的日期 |
-| 🤖 | **模型分布** | 看清不同模型分别用了多少 Token |
-| 🎯 | **范围筛选** | 按工作区、主任务或子任务查看数据 |
-| 💾 | **数据导出** | 导出 CSV 或 JSON，方便留档和继续分析 |
+## 🎬 效果演示
 
-把鼠标放到热力图方格或趋势柱上，可以查看当天的日期、Token 和调用次数。
-界面会自动适配 Harness 的浅色与深色主题。
+![使用效果演示](./assets/usage-demo.gif)
 
-## 界面预览
+## 🖼️ 界面截图
 
-![完整浅色统计界面](./assets/dashboard-light-full.png)
+<details>
+<summary>查看浅色主题</summary>
+
+![浅色主题](./assets/dashboard-light-full.png)
+
+</details>
 
 <details>
 <summary>查看深色主题</summary>
 
-![完整深色统计界面](./assets/dashboard-dark-full.png)
+![深色主题](./assets/dashboard-dark-full.png)
 
 </details>
 
-## 安装、更新与卸载
+## ✨ 功能概览
 
-安装：
+| 模块 | 说明 |
+| --- | --- |
+| 📈 **使用概览** | 展示 Token、会话、消息、活跃天数、连续使用天数及最常用模型的历史累计值 |
+| 📊 **每日趋势** | 展示最近 7 天或 30 天的 Token 变化，悬停可查看指定日期的模型用量 |
+| 🔥 **活跃热力图** | 以颜色深度表示一年内各日期的 Token 用量，悬停可查看 Token 数量及调用轮次 |
+| 🎯 **范围筛选** | 支持按工作区、主任务或子任务限定统计范围 |
+| 💾 **数据导出** | 支持导出 CSV 或 JSON，用于归档或进一步分析 |
+| 🎨 **主题适配** | 自动跟随 Harness 的浅色或深色主题 |
+| ⚡ **轻量运行** | 无第三方图表库、无后台轮询，减少额外的网络请求与运行开销 |
 
-```sh
-dsh plugin --profile web add dsh-usage-stats
-```
-
-更新：
-
-```sh
-dsh plugin --profile web update dsh-usage-stats
-```
-
-卸载：
-
-```sh
-dsh plugin --profile web remove dsh-usage-stats
-```
-
-执行命令后，请重启 `dsh web`。插件入口会出现在侧边栏“设置”上方。
-
-## 数据与隐私
-
-- 统计数据保存在你的 Harness 数据目录中，不会上传到其他服务。
-- 插件只记录时间、工作区、模型名称和 Token 数量等统计信息。
-- 不保存提示词、回复正文、工具参数或 API 密钥。
-- 没有后台轮询，也不依赖大型图表库。
-
-完整说明见 [隐私说明](./PRIVACY.md)。
-
-## 兼容性
-
-目前已验证：
-
-- DeepSeek Harness `0.1.0-rc.6`
-- Node.js `22.19+` 或 `24+`
-- 官方 WebUI，以及加载官方 WebUI 的桌面封装
-
-Harness 仍在快速更新。如果升级后遇到问题，欢迎提交
-[Issue](https://github.com/lanlandeli/dsh-usage-stats/issues)。详细范围见
-[兼容性说明](./docs/COMPATIBILITY.md)。
-
-<details>
-<summary><strong>进阶配置</strong></summary>
-
-插件无需配置即可使用。需要调整历史读取速度或存储位置时，可使用：
+## ⚙️ 配置
 
 ```yaml
 config:
@@ -102,29 +70,36 @@ config:
 
 | 配置项 | 说明 | 默认值 |
 | --- | --- | --- |
-| `indexConcurrency` | 同时读取历史会话的数量，可选 `1`–`8` | `2` |
-| `cacheWriteDelayMs` | 统计缓存写入前的等待时间（毫秒） | `1000` |
+| `indexConcurrency` | 同时读取历史会话的数量（`1`–`8`） | `2` |
+| `cacheWriteDelayMs` | 更新本地统计前的等待时间（毫秒） | `1000` |
 | `cachePath` | 自定义统计缓存位置 | Harness 数据目录 |
 | `apiPath` | 统计接口路径 | `/usage-stats/v1` |
 
-</details>
+## 🔒 隐私与安全
 
-<details>
-<summary><strong>统计口径</strong></summary>
+- 统计索引保存在 `DSH_HOME/usage-stats`，内容包括会话标识、时间、工作目录、模型名称和 Token 数量。
+- 插件**不保存**提示词正文、回复正文、工具参数或 API 密钥。
+- 具体记录范围见 [隐私说明](./PRIVACY.md)。
 
-- 总 Token = 输入 + 输出 + 缓存读取 + 缓存写入。
-- 概览卡显示所选工作区和任务范围内的历史累计。
-- 趋势图显示最近 7 天或 30 天。
-- 消息数包含用户消息和完整的助手回复。
-- 插件不进行价格或费用估算。
+## 🧩 兼容性
 
-</details>
+目前已在 DeepSeek Harness `0.1.0-rc.6`、Node.js `22.19+` 和 `24+` 上测试，可用于官方 Web UI，以及加载该 Web UI 的桌面封装。
 
-## 参与改进
+Harness 仍在持续更新。本文仅声明经过实际测试的运行环境；其他版本可能可以正常运行，但不在当前验证范围内。详细信息见 [兼容性说明](./docs/COMPATIBILITY.md)。
 
-欢迎提交使用反馈、Issue 或 Pull Request。开发说明见
-[贡献指南](./CONTRIBUTING.md)，版本变化见 [更新记录](./CHANGELOG.md)。
+## 🐛 遇到问题
 
-## 许可证
+如果出现插件入口缺失、统计结果不完整、界面显示异常或版本兼容问题，请 [提交 Issue](https://github.com/lanlandeli/dsh-usage-stats/issues/new)。
+
+提交时请尽量附上：
+
+- DeepSeek Harness 和 Node.js 版本；
+- 安装或更新插件时执行的命令；
+- 可复现问题的操作步骤；
+- 错误日志或界面截图。
+
+完整的环境信息和复现步骤有助于定位问题。涉及安全问题时，请勿在公开 Issue 中提交 API 密钥、访问令牌或本机数据，报告方式见 [安全策略](./SECURITY.md)。
+
+## 📜 许可证
 
 [MIT](./LICENSE)

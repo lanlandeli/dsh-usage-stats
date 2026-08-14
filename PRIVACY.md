@@ -1,35 +1,26 @@
-# Privacy and data flow
+# 隐私说明与数据流
 
-`dsh-usage-stats` performs usage aggregation on the same machine as DeepSeek
-Harness. It does not send telemetry to the package author or any third party.
+`dsh-usage-stats` 在运行 DeepSeek Harness 的同一台设备上完成统计，不向插件作者或第三方服务发送遥测数据。
 
-## Data read
+## 读取的数据
 
-- Session headers: session identifier, creation time, working directory, and
-  parent-session relationship.
-- Session events: event sequence/time, direct-user vs assistant event type,
-  provider/model identifier, and token counters.
+- 会话信息：会话标识、创建时间、工作目录和父会话关系。
+- 会话事件：事件序号与时间、用户或助手事件类型、提供商与模型标识、Token 计数。
 
-## Data not retained
+## 不会保存的数据
 
-- Prompt or response text.
-- Tool names, tool arguments, or tool results.
-- API keys, model credentials, environment variables, or file contents.
+- 提示词或回复正文；
+- 工具名称、参数或执行结果；
+- API 密钥、模型凭据、环境变量或文件内容。
 
-## Local index
+## 本地索引
 
-The default index is `DSH_HOME/usage-stats/index-v1.json`. It contains compact
-session summaries required to avoid rereading full session logs on every start.
-Writes are debounced, atomic, and requested with owner-only file permissions on
-platforms that support them. Set `cachePath` to relocate it.
+默认索引文件为 `DSH_HOME/usage-stats/index-v1.json`。其中仅保存生成统计所需的会话摘要，避免每次启动时重复读取全部会话记录。索引采用延迟合并与原子写入；在操作系统支持时，请求仅所有者可访问的文件权限。可通过 `cachePath` 修改保存位置。
 
-## Browser API
+## 浏览器接口
 
-The plugin registers a same-origin endpoint under `/usage-stats/v1`. It accepts
-only GET and HEAD and returns aggregate counters. CSV/JSON exports contain dates,
-model/provider identifiers, token totals, message totals, and session totals.
+插件在 `/usage-stats/v1` 下注册同源接口，仅接受 GET 和 HEAD 请求并返回汇总数据。CSV 与 JSON 导出内容包括日期、提供商与模型标识、Token 总量、消息总量和会话总量。
 
-## Deletion
+## 删除数据
 
-Uninstalling the package does not silently delete statistics. Remove
-`DSH_HOME/usage-stats` manually if you also want to erase the local index.
+卸载插件不会自动删除统计索引。如需同时清除本地统计，请手动删除 `DSH_HOME/usage-stats`。

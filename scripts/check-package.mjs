@@ -19,8 +19,7 @@ const files = new Set(report[0]?.files?.map(file => file.path) ?? [])
 const required = [
   'package.json', 'README.md', 'README.en.md', 'LICENSE', 'CHANGELOG.md',
   'PRIVACY.md', 'SECURITY.md', 'cordis.patch.yml', 'lib/index.js',
-  'lib/index.d.ts', 'lib/client.js', 'assets/dashboard-light.png',
-  'assets/dashboard-dark.png', 'assets/dashboard-light-full.png',
+  'lib/index.d.ts', 'lib/client.js', 'assets/dashboard-light-full.png',
   'assets/dashboard-dark-full.png',
   'assets/usage-demo.gif',
 ]
