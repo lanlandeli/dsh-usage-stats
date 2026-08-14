@@ -3,6 +3,13 @@
 All notable changes are documented here. This project follows Semantic
 Versioning while DeepSeek Harness remains in developer preview.
 
+## [0.1.11] - 2026-08-14
+
+### Fixed
+
+- Added safe horizontal chart insets so the first and last date labels are not
+  clipped at panel boundaries in light or dark mode.
+
 ## [0.1.10] - 2026-08-14
 
 ### Changed

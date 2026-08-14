@@ -1,6 +1,6 @@
 {
   "name": "dsh-usage-stats",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Beautiful token analytics for DeepSeek Harness — trends, activity heatmaps, model breakdowns, and data exports.",
   "author": "lanlandeli",
   "repository": {

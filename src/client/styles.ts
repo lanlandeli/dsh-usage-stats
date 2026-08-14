@@ -104,10 +104,10 @@ body[data-ds-dark-theme] .us-cell[data-level="5"] { background: #67b7ff; }
 .us-floating-tip { position: fixed; z-index: 200; transform: translate(-50%, -100%); width: max-content; max-width: min(360px, calc(100vw - 24px)); padding: 9px 11px; border: 1px solid var(--us-border); border-radius: 10px; color: var(--us-text); background: color-mix(in srgb, var(--us-raised) 94%, transparent); box-shadow: 0 12px 38px rgba(0,0,0,.16); backdrop-filter: blur(14px); font-size: 12px; line-height: 1.4; pointer-events: none; animation: us-tip-in 110ms ease-out; }
 .us-trend { padding: 22px 22px 18px; }
 .us-chart-frame { position: relative; height: 330px; padding: 0 8px; border-radius: 12px; background: color-mix(in srgb, var(--us-raised) 38%, transparent); overflow: hidden; }
-.us-grid-lines { position: absolute; inset: 26px 26px 47px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+.us-grid-lines { position: absolute; inset: 26px 36px 47px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
 .us-grid-lines i { display: block; width: 100%; border-top: 1px dashed color-mix(in srgb, var(--us-border) 72%, transparent); }
 .us-chart-scroll { position: relative; height: 100%; width: 100%; overflow: hidden; }
-.us-chart { height: 100%; width: 100%; min-width: 0; display: flex; align-items: stretch; gap: clamp(8px, 1.4vw, 24px); padding: 26px 20px 0; }
+.us-chart { height: 100%; width: 100%; min-width: 0; display: flex; align-items: stretch; gap: clamp(8px, 1.4vw, 24px); padding: 26px 36px 0; }
 .us-chart[data-dense="true"] { gap: clamp(2px, .35vw, 6px); }
 .us-bar-column { min-width: 0; flex: 1 1 0; height: 100%; display: grid; grid-template-rows: minmax(0, 1fr) 46px; align-items: end; }
 .us-bar-wrap { width: min(68%, 76px); min-width: 3px; height: 100%; justify-self: center; display: flex; flex-direction: column-reverse; justify-content: flex-start; border-bottom: 1px solid color-mix(in srgb, var(--us-border) 90%, transparent); }
