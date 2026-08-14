@@ -17,7 +17,7 @@ const output = await runNpm(['pack', '--dry-run', '--json', '--ignore-scripts'])
 const report = JSON.parse(output)
 const files = new Set(report[0]?.files?.map(file => file.path) ?? [])
 const required = [
-  'package.json', 'README.md', 'README.zh-CN.md', 'LICENSE', 'CHANGELOG.md',
+  'package.json', 'README.md', 'README.en.md', 'LICENSE', 'CHANGELOG.md',
   'PRIVACY.md', 'SECURITY.md', 'cordis.patch.yml', 'lib/index.js',
   'lib/index.d.ts', 'lib/client.js', 'assets/dashboard-light.png',
   'assets/dashboard-dark.png', 'assets/dashboard-light-full.png',

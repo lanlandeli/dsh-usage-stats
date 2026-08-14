@@ -1,64 +1,59 @@
 # dsh-usage-stats
 
-[简体中文](./README.zh-CN.md)
+[English](./README.en.md)
 
-Beautiful token analytics for DeepSeek Harness: lifetime totals, recent token
-trends, an activity heatmap, model breakdowns, workspace/task filters, and
-CSV/JSON exports — all integrated through the official Web UI slots.
+为 DeepSeek Harness 打造的精美 Token 数据面板：历史累计、近期趋势、活跃热力图、
+模型用量分析、工作区/任务筛选与 CSV/JSON 导出，并通过官方 Web UI Slot 无缝集成。
 
-![Complete light dashboard](./assets/dashboard-light-full.png)
+![完整浅色统计界面](./assets/dashboard-light-full.png)
 
 <details>
-<summary>Dark theme</summary>
+<summary>深色主题</summary>
 
-![Complete dark dashboard](./assets/dashboard-dark-full.png)
+![完整深色统计界面](./assets/dashboard-dark-full.png)
 
 </details>
 
-## Install
+## 安装
 
 ```sh
 dsh plugin --profile web add dsh-usage-stats
 ```
 
-Restart the Web profile, then open **Usage Statistics** above Settings in the
-sidebar. To upgrade or remove it:
+重启 Web Profile 后，可在侧边栏“设置”上方打开“使用统计”。升级或卸载：
 
 ```sh
 dsh plugin --profile web update dsh-usage-stats
 dsh plugin --profile web remove dsh-usage-stats
 ```
 
-## Highlights
+## 功能
 
-- Lifetime token, session, message, active-day, streak, and top-model totals.
-- 7-day and 30-day token trends with per-model hover details.
-- One-year activity heatmap with daily token/call details.
-- Workspace and main/subtask filtering.
-- Light, dark, and system theme support.
-- Same-origin, read-only CSV and JSON exports.
-- No charting runtime dependency and no background polling.
+- Token、会话、消息、活跃天数、连续天数和最常用模型的历史累计。
+- 最近 7/30 天 Token 趋势，悬停可查看各模型精确用量。
+- 一年活跃热力图，悬停可查看每日 Token 和调用轮次。
+- 工作区以及主任务/子任务筛选。
+- 浅色、深色及跟随系统主题。
+- 同源只读的 CSV/JSON 导出。
+- 无图表运行时依赖，无后台轮询。
 
-## Privacy
+## 隐私
 
-The index is local to `DSH_HOME/usage-stats`. It stores session identifiers,
-timestamps, working-directory labels, provider/model identifiers, and token
-counters. It does not retain prompt text, response text, tool arguments, or API
-keys. See [PRIVACY.md](./PRIVACY.md) for the complete data-flow description.
+索引仅保存在 `DSH_HOME/usage-stats`，内容包括会话标识、时间戳、工作目录标签、
+提供商/模型标识和 Token 计数。插件不保存提示词正文、回复正文、工具参数或 API
+密钥。完整说明见 [PRIVACY.md](./PRIVACY.md)。
 
-## Compatibility
+## 兼容性
 
-The verified baseline is DeepSeek Harness `0.1.0-rc.6` with Node.js `22.19+`
-or `24+`, on the Web UI and desktop wrappers that load it. Harness is currently
-in developer preview, so every release is tested against the declared baseline
-instead of promising compatibility with untested future builds. See
-[Compatibility](./docs/COMPATIBILITY.md).
+已验证基线为 DeepSeek Harness `0.1.0-rc.6`，Node.js `22.19+` 或 `24+`，
+适用于官方 Web UI 及加载该 Web UI 的桌面封装。Harness 仍处于开发者预览阶段，
+因此我们只声明经过测试的版本，不承诺未经验证的未来版本。详见
+[兼容性说明](./docs/COMPATIBILITY.md)。
 
-The Host side only consumes `sessionQuery`, `session/event`, and `webServer`.
-The browser side uses the public `sidebar.footer.action` and `shell.overlay`
-slots; it does not query or mutate Harness DOM nodes.
+Host 侧只使用 `sessionQuery`、`session/event` 和 `webServer`；浏览器侧只使用
+公开的 `sidebar.footer.action` 与 `shell.overlay` Slot，不查询或修改 Harness DOM。
 
-## Configuration
+## 配置
 
 ```yaml
 config:
@@ -67,37 +62,31 @@ config:
   apiPath: /usage-stats/v1
 ```
 
-- `indexConcurrency`: bounded historical-session readers (`1`–`8`).
-- `cacheWriteDelayMs`: debounce for atomic local cache writes.
-- `cachePath`: optional custom index location.
-- `apiPath`: same-origin read-only API prefix.
+- `indexConcurrency`：历史会话读取并发数（`1`–`8`）。
+- `cacheWriteDelayMs`：本地索引原子写入的防抖时间。
+- `cachePath`：可选的自定义索引路径。
+- `apiPath`：同源只读 API 前缀。
 
-## Metric definitions
+## 统计口径
 
-- Total tokens = input + output + cache reads + cache writes.
-- Overview cards are lifetime totals for the selected workspace/task scope.
-- Trend charts cover the selected recent 7/30-day window.
-- Messages are direct human messages plus assembled assistant replies.
-- No price or cost estimation is performed.
+- 总 Token = 输入 + 输出 + 缓存读取 + 缓存写入。
+- 顶部概览卡显示当前工作区/任务范围内的历史累计。
+- 趋势图显示选择的最近 7/30 天。
+- 消息数为直接用户消息与完整助手回复数之和。
+- 插件不进行价格或费用估算。
 
-## Development
+## 开发验证
 
 ```sh
 npm ci
 npm run check
 npm run pack:check
-```
-
-The clean-profile smoke test installs, boots, queries, and removes the packed
-plugin in an isolated temporary `DSH_HOME`:
-
-```sh
 npm run smoke:clean-profile
 ```
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md), [SECURITY.md](./SECURITY.md), and
-[CHANGELOG.md](./CHANGELOG.md).
+另见 [贡献指南](./CONTRIBUTING.md)、[安全策略](./SECURITY.md) 与
+[更新记录](./CHANGELOG.md)。
 
-## License
+## 许可证
 
 MIT
