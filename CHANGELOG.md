@@ -3,6 +3,13 @@
 All notable changes are documented here. This project follows Semantic
 Versioning while DeepSeek Harness remains in developer preview.
 
+## [0.1.10] - 2026-08-14
+
+### Changed
+
+- Reworked the public project description around concrete dashboard features.
+- Improved npm search keywords for analytics and data visualization.
+
 ## [0.1.9] - 2026-08-14
 
 ### Added

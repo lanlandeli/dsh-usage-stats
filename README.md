@@ -2,10 +2,9 @@
 
 [简体中文](./README.zh-CN.md)
 
-A local-first usage dashboard for the DeepSeek Harness Web UI. It adds an
-official-slot sidebar entry with lifetime totals, recent token trends, an
-activity heatmap, model distribution, workspace/task filters, and CSV/JSON
-exports.
+Beautiful token analytics for DeepSeek Harness: lifetime totals, recent token
+trends, an activity heatmap, model breakdowns, workspace/task filters, and
+CSV/JSON exports — all integrated through the official Web UI slots.
 
 ![Complete light dashboard](./assets/dashboard-light-full.png)
 

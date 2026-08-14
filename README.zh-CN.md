@@ -2,9 +2,8 @@
 
 [English](./README.md)
 
-DeepSeek Harness Web UI 的本地用量统计插件。插件通过官方 UI Slot 在侧边栏中
-加入统计入口，提供历史累计、近期 Token 趋势、活跃热力图、模型分布、工作区/
-任务筛选以及 CSV/JSON 导出。
+为 DeepSeek Harness 打造的精美 Token 数据面板：历史累计、近期趋势、活跃热力图、
+模型用量分析、工作区/任务筛选与 CSV/JSON 导出，并通过官方 Web UI Slot 无缝集成。
 
 ![完整浅色统计界面](./assets/dashboard-light-full.png)
 

@@ -1,7 +1,7 @@
 {
   "name": "dsh-usage-stats",
-  "version": "0.1.9",
-  "description": "Local-first usage dashboard for DeepSeek Harness",
+  "version": "0.1.10",
+  "description": "Beautiful token analytics for DeepSeek Harness — trends, activity heatmaps, model breakdowns, and data exports.",
   "author": "lanlandeli",
   "repository": {
     "type": "git",
@@ -51,7 +51,7 @@
     "dsh",
     "dsh-plugin",
     "token-usage",
-    "local-first",
+    "data-visualization",
     "analytics",
     "usage-statistics"
   ],
