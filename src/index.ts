@@ -8,6 +8,8 @@ import type {} from '@deepseek-ai/dsh-session-query'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import z from '@deepseek-ai/schemastery'
 import { aggregateStats, appendActivity, exportCsv, summarizeSession } from './core.js'
+import { buildPricingTable } from './pricing.js'
+import type { PriceEntry, PricingTable } from './pricing.js'
 import type { IndexCache, SessionSummary, StatsQuery, TaskScope } from './types.js'
 
 export const name = 'usage-stats'
@@ -18,14 +20,33 @@ export interface Config {
   cacheWriteDelayMs?: number
   cachePath?: string
   apiPath?: string
+  /** Per-model price overrides (per 1M tokens, currency units). Keys may be "provider/model" or "model". */
+  pricing?: Record<string, Partial<PriceEntry>>
+  /** Currency symbol for cost display. */
+  currencySymbol?: string
 }
 
-export const Config: z<Config> = z.object({
+const PriceEntrySchema = z.object({
+  input: z.number().min(0).description('Input tokens (cache miss) price per 1M tokens.'),
+  output: z.number().min(0).description('Output tokens price per 1M tokens.'),
+  cacheRead: z.number().min(0).description('Cache-hit input tokens price per 1M tokens.'),
+  cacheWrite: z.number().min(0).description('Cache-write tokens price per 1M tokens.'),
+  reasoning: z.number().min(0).description('Reasoning tokens price per 1M tokens (usually 0; included in output).'),
+  peak: z.any().description('Peak-hour price set after offPeakSince (same fields as above).'),
+  offPeak: z.any().description('Off-peak price set after offPeakSince (same fields as above).'),
+  peakHours: z.array(z.tuple([z.number(), z.number()])).description('Peak hour ranges in peakTimeZone, e.g. [[9,12],[14,18]].'),
+  peakTimeZone: z.string().description('Time zone used to evaluate peak/off-peak hours.'),
+  offPeakSince: z.string().pattern(/^\d{4}-\d{2}-\d{2}$/).description('Local date (peakTimeZone) from which peak/off-peak pricing applies.'),
+})
+
+export const Config = z.object({
   indexConcurrency: z.natural().min(1).max(8).default(2).description('Concurrent historical session reads.'),
   cacheWriteDelayMs: z.natural().min(250).max(30_000).default(1000).description('Debounce delay for local index writes.'),
   cachePath: z.string().description('Optional index path; defaults below DSH_HOME.'),
   apiPath: z.string().default('/usage-stats/v1').description('Same-origin read-only API prefix.'),
-})
+  pricing: z.dict(PriceEntrySchema).description('Per-model price overrides (per 1M tokens, currency units). Keys may be "provider/model" or "model"; built-in DeepSeek entries merge over, others are used as-is.'),
+  currencySymbol: z.string().default('¥').description('Currency symbol for cost display.'),
+}) as unknown as z<Config>
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 const SCOPES = new Set<TaskScope>(['all', 'main', 'subtasks'])
@@ -70,12 +91,16 @@ function isCache(value: unknown): value is IndexCache {
 class UsageIndex {
   private readonly sessions = new Map<string, SessionSummary>()
   private readonly cachePath: string
+  private readonly pricingTable: PricingTable
+  private readonly currencySymbol: string
   private writeTimer: ReturnType<typeof setTimeout> | undefined
   private disposed = false
   private loading: Promise<void> | undefined
 
   constructor(private readonly ctx: Context, private readonly config: Required<Pick<Config, 'indexConcurrency' | 'cacheWriteDelayMs' | 'apiPath'>> & Config) {
     this.cachePath = config.cachePath ?? dshHomePath('usage-stats', 'index-v1.json')
+    this.pricingTable = buildPricingTable(config.pricing)
+    this.currencySymbol = config.currencySymbol ?? '¥'
   }
 
   start(): void {
@@ -165,7 +190,7 @@ class UsageIndex {
     }
     try {
       const query = parseQuery(req)
-      const snapshot = aggregateStats(this.sessions.values(), query)
+      const snapshot = aggregateStats(this.sessions.values(), query, this.pricingTable, this.currencySymbol)
       const path = new URL(req.url ?? '/', 'http://localhost').pathname
       if (path === `${this.config.apiPath}/export.csv`) {
         const csv = exportCsv(snapshot)
@@ -204,9 +229,12 @@ export function apply(ctx: Context, config: Config = {}): void {
     indexConcurrency: config.indexConcurrency ?? 2,
     cacheWriteDelayMs: config.cacheWriteDelayMs ?? 1000,
     apiPath: (config.apiPath ?? '/usage-stats/v1').replace(/\/$/, ''),
+    currencySymbol: config.currencySymbol ?? '¥',
   }
   new UsageIndex(ctx, normalized).start()
 }
 
 export type * from './types.js'
 export { activityFromEvent, aggregateStats, appendActivity, exportCsv, summarizeSession } from './core.js'
+export { buildPricingTable, estimateCost, priceForTime, resolvePricing } from './pricing.js'
+export type { PriceEntry, PriceRates, PricingTable } from './pricing.js'

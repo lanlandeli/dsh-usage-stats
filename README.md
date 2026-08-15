@@ -55,9 +55,53 @@ dsh plugin --profile web remove dsh-usage-stats
 | 📊 **每日趋势** | 展示最近 7 天或 30 天的 Token 变化，悬停可查看指定日期的模型用量 |
 | 🔥 **活跃热力图** | 以颜色深度表示一年内各日期的 Token 用量，悬停可查看 Token 数量及调用轮次 |
 | 🎯 **范围筛选** | 支持按工作区、主任务或子任务限定统计范围 |
-| 💾 **数据导出** | 支持导出 CSV 或 JSON，用于归档或进一步分析 |
+| 💾 **数据导出** | 支持导出 CSV 或 JSON，用于归档或进一步分析（CSV 含费用列） |
+| 💰 **费用估算** | 按模型官方定价估算累计费用，支持峰谷时段计价与自定义价格 |
 | 🎨 **主题适配** | 自动跟随 Harness 的浅色或深色主题 |
 | ⚡ **轻量运行** | 无第三方图表库、无后台轮询，减少额外的网络请求与运行开销 |
+
+## 💰 费用估算
+
+费用按**每次调用**的 Token 用量与模型单价（每百万 tokens）估算，再汇总到天 / 模型 / 总计：
+
+```
+费用 = 输入 × 输入单价 + 输出 × 输出单价 + 缓存命中 × 缓存命中单价 + 缓存写入 × 缓存写入单价 + 推理 × 推理单价
+```
+
+已内置 DeepSeek 官方定价（人民币 ¥/百万 tokens）：
+
+| 模型 | 输入（未命中） | 缓存命中 | 输出 | 高峰（9–12、14–18 北京时） | 空闲时段 |
+| --- | --- | --- | --- | --- | --- |
+| `deepseek-v4-flash` | 1 | 0.02 | 2 | 3 / 0.1 / 9 | 1.5 / 0.05 / 4.5 |
+| `deepseek-v4-pro` | 3 | 0.025 | 6 | 9 / 0.3 / 27 | 4.5 / 0.15 / 13.5 |
+
+- 2026-08-17（北京时间）起 DeepSeek 采用**峰谷定价**：高峰时段（9–12、14–18）为调价前的 3 倍，空闲时段为高峰的一半；之前的调用按调价前价格计。
+- `cacheWrite`、`reasoning` 不单独计费（推理已计入输出；缓存写入免费）。
+- 未覆盖的模型按 0 计费；通过 `pricing` 配置可按 `provider/model` 或 `model` 覆盖或新增价格。
+
+### 自定义价格
+
+```yaml
+config:
+  pricing:
+    # 覆盖内置条目（按 key 合并，缺省字段沿用内置值）
+    deepseek-v4-flash:
+      output: 10
+    # 新增未覆盖的模型
+    openrouter/gpt-5:
+      input: 1.25
+      output: 10
+      cacheRead: 0.125
+    # 自定义峰谷（peak/offPeak 为可选价格组，peakHours 为 [起,止) 小时区间）
+    my-model:
+      input: 1
+      output: 2
+      peak: { input: 4, output: 8 }
+      offPeak: { input: 2, output: 4 }
+      peakHours: [[9, 12], [14, 18]]
+      peakTimeZone: "Asia/Shanghai"
+      offPeakSince: "2026-08-17"
+  currencySymbol: "¥"   # 显示用货币符号
 
 ## ⚙️ 配置
 
@@ -74,6 +118,8 @@ config:
 | `cacheWriteDelayMs` | 更新本地统计前的等待时间（毫秒） | `1000` |
 | `cachePath` | 自定义统计缓存位置 | Harness 数据目录 |
 | `apiPath` | 统计接口路径 | `/usage-stats/v1` |
+| `pricing` | 按模型覆盖或新增单价（每百万 tokens） | 内置 DeepSeek 价格 |
+| `currencySymbol` | 费用显示用货币符号 | `¥` |
 
 ## 🔒 隐私与安全
 

@@ -10,7 +10,7 @@ import { styles } from './styles.js'
 
 export const inject = ['slots']
 
-type IconName = 'chart' | 'close' | 'back' | 'download' | 'tokens' | 'chat' | 'message' | 'calendar' | 'streak' | 'model'
+type IconName = 'chart' | 'close' | 'back' | 'download' | 'tokens' | 'chat' | 'message' | 'calendar' | 'streak' | 'model' | 'money'
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }): ReactNode {
   const paths: Record<IconName, ReactNode> = {
@@ -24,6 +24,7 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }): ReactNode
     calendar: <><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M8 3v4m8-4v4M3 10h18" /></>,
     streak: <><path d="M12 22c4 0 7-3 7-7 0-5-4-8-6-12 0 4-3 6-4 8-1-2-2-3-2-5-2 2-3 5-3 8 0 5 3 8 8 8z" /></>,
     model: <><path d="M4 17 12 3l8 14-8 4zM8 17h8" /></>,
+    money: <><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></>,
   }
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>
 }
@@ -65,6 +66,16 @@ function localDate(offset = 0): string {
 
 function compact(value: number): string {
   return new Intl.NumberFormat('zh-CN', { notation: value >= 10_000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(value)
+}
+
+function formatMoney(value: number, symbol = '¥'): string {
+  if (!Number.isFinite(value) || value <= 0) return `${symbol}0.00`
+  if (value < 0.01) {
+    const label = `${symbol}${value.toFixed(4)}`
+    return label === `${symbol}0.0000` ? `${symbol}<0.0001` : label
+  }
+  if (value < 1000) return `${symbol}${value.toFixed(2)}`
+  return `${symbol}${new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 0 }).format(value)}`
 }
 
 function Card({ icon, label, value, detail }: { icon: IconName; label: string; value: ReactNode; detail?: string }): ReactNode {
@@ -115,13 +126,13 @@ function Heatmap({ snapshot }: { snapshot: StatsSnapshot }): ReactNode {
     setTip({ x: Math.min(window.innerWidth - 150, Math.max(150, rect.left + rect.width / 2)), y: rect.top - 10, text })
   }
   return <><section className="us-panel us-heat-panel"><div className="us-panel-head"><span className="us-panel-title">活跃热力图</span><span className="us-panel-note us-heat-legend"><span>较少</span>{[0,1,2,3,4,5].map(item => <i key={item} className="us-cell" data-level={item} />)}<span>较多</span></span></div><div className="us-heat-scroll"><div className="us-heat-week"><span>一</span><span>三</span><span>五</span></div><div className="us-heat">{snapshot.days.map(day => {
-    const text = `${tooltipDate(day.date)}：${compact(day.tokens)} Tokens · ${day.calls} 轮`
+    const text = `${tooltipDate(day.date)}：${compact(day.tokens)} Tokens · ${day.calls} 轮 · 约 ${formatMoney(day.cost, snapshot.currency)}`
     return <span className="us-cell us-cell-tip" key={day.date} data-level={level(day.tokens)} aria-label={text} tabIndex={0} onMouseEnter={event => showTip(event.currentTarget, text)} onMouseLeave={() => setTip(null)} onFocus={event => showTip(event.currentTarget, text)} onBlur={() => setTip(null)} />
   })}</div></div></section>{tip && createPortal(<div data-usage-stats className="us-floating-tip" role="tooltip" style={{ left: tip.x, top: tip.y }}>{tip.text}</div>, document.body)}</>
 }
 
 function DailyChart({ snapshot }: { snapshot: StatsSnapshot }): ReactNode {
-  const [tip, setTip] = useState<{ x: number; y: number; date: string; total: number; rows: { key: string; name: string; value: number; color: string }[] } | null>(null)
+  const [tip, setTip] = useState<{ x: number; y: number; date: string; total: number; cost: number; currency: string; rows: { key: string; name: string; value: number; color: string }[] } | null>(null)
   const max = Math.max(1, ...snapshot.days.map(day => day.tokens))
   const visibleModels = snapshot.models.slice(0, 6)
   const colors = ['#1684ff', '#219653', '#9368ef', '#f59e0b', '#ef5da8', '#22b8b5']
@@ -141,24 +152,30 @@ function DailyChart({ snapshot }: { snapshot: StatsSnapshot }): ReactNode {
     const x = Math.min(window.innerWidth - halfWidth - 12, Math.max(halfWidth + 12, rect.left + rect.width / 2))
     const preferredY = rect.top > halfHeight + 24 ? rect.top - halfHeight - 12 : rect.bottom + halfHeight + 12
     const y = Math.min(window.innerHeight - halfHeight - 12, Math.max(halfHeight + 12, preferredY))
-    setTip({ x, y, date: dateLabel(day.date), total: day.tokens, rows })
+    setTip({ x, y, date: dateLabel(day.date), total: day.tokens, cost: day.cost, currency: snapshot.currency, rows })
   }
   return <><section className="us-panel us-trend"><div className="us-panel-head"><span className="us-panel-title">按天 Token 趋势</span></div><div className="us-chart-frame"><div className="us-grid-lines"><i /><i /><i /><i /></div><div className="us-chart-scroll"><div className="us-chart" data-dense={snapshot.days.length > 14}>{snapshot.days.map((day, dayIndex) => <div className="us-bar-column" key={day.date}><div className="us-bar-wrap">{day.tokens > 0 && <div className="us-bar-hit" style={{ height: `${day.tokens / max * 100}%` }} tabIndex={0} aria-label={`${dateLabel(day.date)}，${compact(day.tokens)} tokens`} onMouseEnter={event => showTip(event.currentTarget, day)} onMouseLeave={() => setTip(null)} onFocus={event => showTip(event.currentTarget, day)} onBlur={() => setTip(null)}>{visibleModels.map((model, modelIndex) => {
     const value = day.models[model.key] ?? 0
     if (value === 0) return null
     return <i className="us-bar-segment" key={model.key} style={{ height: `${value / day.tokens * 100}%`, background: colors[modelIndex] }} />
-  })}</div>}</div><span className="us-date-label">{dayIndex % tickEvery === 0 || dayIndex === snapshot.days.length - 1 ? dateLabel(day.date) : ''}</span></div>)}</div></div></div><div className="us-legend">{visibleModels.map((model, index) => <span key={model.key}><i className="us-dot" style={{ background: colors[index] }} />{model.model}</span>)}</div></section>{tip && createPortal(<div data-usage-stats className="us-chart-tip" role="tooltip" style={{ left: tip.x, top: tip.y }}><div className="us-chart-tip-head"><strong>{tip.date}</strong><span>{compact(tip.total)} tokens</span></div>{tip.rows.map(row => <div className="us-chart-tip-row" key={row.key}><i style={{ background: row.color }} /><span>{row.name}</span><b>{new Intl.NumberFormat('en-US').format(row.value)}</b></div>)}</div>, document.body)}</>
+  })}</div>}</div><span className="us-date-label">{dayIndex % tickEvery === 0 || dayIndex === snapshot.days.length - 1 ? dateLabel(day.date) : ''}</span></div>)}</div></div></div><div className="us-legend">{visibleModels.map((model, index) => <span key={model.key}><i className="us-dot" style={{ background: colors[index] }} />{model.model}</span>)}</div></section>{tip && createPortal(<div data-usage-stats className="us-chart-tip" role="tooltip" style={{ left: tip.x, top: tip.y }}><div className="us-chart-tip-head"><strong>{tip.date}</strong><span>{compact(tip.total)} tokens · 约 {formatMoney(tip.cost, tip.currency)}</span></div>{tip.rows.map(row => <div className="us-chart-tip-row" key={row.key}><i style={{ background: row.color }} /><span>{row.name}</span><b>{new Intl.NumberFormat('en-US').format(row.value)}</b></div>)}</div>, document.body)}</>
 }
 
 function ModelUsage({ snapshot }: { snapshot: StatsSnapshot }): ReactNode {
   const p1 = Math.min(100, snapshot.models[0]?.percent ?? 0)
   const p2 = Math.min(100, p1 + (snapshot.models[1]?.percent ?? 0))
-  return <section className="us-panel"><div className="us-panel-head"><span className="us-panel-title">模型用量</span><span className="us-panel-note">输入、输出与缓存合计</span></div><div className="us-model-layout"><div className="us-donut" style={{ '--us-p1': `${p1}%`, '--us-p2': `${p2}%` } as React.CSSProperties}><div className="us-donut-center">{compact(snapshot.totals.tokens)}<small>tokens</small></div></div><div>{snapshot.models.slice(0, 8).map(model => <div className="us-model-row" key={model.key}><span className="us-model-name"><i className="us-dot" />{model.model}</span><span className="us-model-percent">{model.percent.toFixed(model.percent < 10 ? 1 : 0)}%</span><span className="us-model-meta">{model.provider} · {compact(model.tokens)} tokens · {model.calls} 次调用</span></div>)}</div></div></section>
+  return <section className="us-panel"><div className="us-panel-head"><span className="us-panel-title">模型用量</span><span className="us-panel-note">输入、输出与缓存合计 · 费用约 {formatMoney(snapshot.totals.cost, snapshot.currency)}</span></div><div className="us-model-layout"><div className="us-donut" style={{ '--us-p1': `${p1}%`, '--us-p2': `${p2}%` } as React.CSSProperties}><div className="us-donut-center">{compact(snapshot.totals.tokens)}<small>tokens</small></div></div><div>{snapshot.models.slice(0, 8).map(model => <div className="us-model-row" key={model.key}><span className="us-model-name"><i className="us-dot" />{model.model}</span><span className="us-model-percent">{model.percent.toFixed(model.percent < 10 ? 1 : 0)}%</span><span className="us-model-meta">{model.provider} · {compact(model.tokens)} tokens · {model.calls} 次调用{model.cost > 0 ? ` · 约 ${formatMoney(model.cost, snapshot.currency)}` : ''}</span></div>)}</div></div></section>
 }
 
 function Breakdown({ snapshot }: { snapshot: StatsSnapshot }): ReactNode {
-  const rows = [['输入',snapshot.totals.input],['输出',snapshot.totals.output],['缓存读取',snapshot.totals.cacheRead],['缓存写入',snapshot.totals.cacheWrite]] as const
-  return <section className="us-panel"><div className="us-panel-head"><span className="us-panel-title">Token 构成</span></div><div className="us-breakdown">{rows.map(([label,value]) => <div className="us-break-item" key={label}><span>{label}</span><strong>{compact(value)}</strong></div>)}</div></section>
+  const rows: [string, number | string][] = [
+    ['输入', snapshot.totals.input],
+    ['输出', snapshot.totals.output],
+    ['缓存读取', snapshot.totals.cacheRead],
+    ['缓存写入', snapshot.totals.cacheWrite],
+    ['费用估算', formatMoney(snapshot.totals.cost, snapshot.currency)],
+  ]
+  return <section className="us-panel"><div className="us-panel-head"><span className="us-panel-title">Token 构成</span></div><div className="us-breakdown">{rows.map(([label, value]) => <div className="us-break-item" key={label}><span>{label}</span><strong>{typeof value === 'number' ? compact(value) : value}</strong></div>)}</div></section>
 }
 
 function Dashboard({ hide }: { hide: () => void }): ReactNode {
@@ -204,8 +221,9 @@ function Dashboard({ hide }: { hide: () => void }): ReactNode {
         <span className="us-spacer" /><a className="us-export" href={exportUrl('csv')}><Icon name="download" size={15} />CSV</a><a className="us-export" href={exportUrl('json')}><Icon name="download" size={15} />JSON</a>
       </div>
       {error ? <div className="us-state"><div><p>统计数据暂时无法读取</p><small>{error}</small></div></div> : snapshot === null ? <div className="us-state"><div><div className="us-spinner" />正在建立本地增量索引…</div></div> : <>
-        <div className="us-cards"><Card icon="tokens" label="Tokens 用量" value={compact(snapshot.allTime.totals.tokens)} detail={`输入 ${compact(snapshot.allTime.totals.input)} · 输出 ${compact(snapshot.allTime.totals.output)}`} /><Card icon="chat" label="会话数量" value={snapshot.allTime.totals.sessions} /><Card icon="message" label="消息数量" value={snapshot.allTime.totals.messages} /><Card icon="calendar" label="活跃天数" value={snapshot.allTime.totals.activeDays} /><Card icon="streak" label="当前连续天数" value={snapshot.allTime.totals.currentStreak} />{snapshot.allTime.mostUsedModel ? <Card icon="model" label="最常用模型" value={<span style={{ fontSize: '18px' }}>{snapshot.allTime.mostUsedModel.model}</span>} detail={`${snapshot.allTime.mostUsedModel.percent.toFixed(1)}% · ${snapshot.allTime.mostUsedModel.provider}`} /> : <Card icon="model" label="最常用模型" value={<span style={{ fontSize: '18px' }}>暂无数据</span>} />}</div>
+        <div className="us-cards"><Card icon="tokens" label="Tokens 用量" value={compact(snapshot.allTime.totals.tokens)} detail={`输入 ${compact(snapshot.allTime.totals.input)} · 输出 ${compact(snapshot.allTime.totals.output)}`} /><Card icon="money" label="费用估算" value={formatMoney(snapshot.allTime.totals.cost, snapshot.currency)} detail={`按模型官方定价估算 · 近 ${days} 天约 ${formatMoney(snapshot.totals.cost, snapshot.currency)}`} /><Card icon="chat" label="会话数量" value={snapshot.allTime.totals.sessions} /><Card icon="message" label="消息数量" value={snapshot.allTime.totals.messages} /><Card icon="calendar" label="活跃天数" value={snapshot.allTime.totals.activeDays} /><Card icon="streak" label="当前连续天数" value={snapshot.allTime.totals.currentStreak} />{snapshot.allTime.mostUsedModel ? <Card icon="model" label="最常用模型" value={<span style={{ fontSize: '18px' }}>{snapshot.allTime.mostUsedModel.model}</span>} detail={`${snapshot.allTime.mostUsedModel.percent.toFixed(1)}% · ${snapshot.allTime.mostUsedModel.provider}`} /> : <Card icon="model" label="最常用模型" value={<span style={{ fontSize: '18px' }}>暂无数据</span>} />}</div>
         <Heatmap snapshot={heatmap ?? snapshot} /><DailyChart snapshot={snapshot} /><ModelUsage snapshot={snapshot} /><Breakdown snapshot={snapshot} />
+        <p className="us-note">费用为按模型官方定价（{snapshot.currency}/百万 tokens）的估算值；DeepSeek 已内置现价与 2026-08-17 起峰谷调价（北京时 9–12、14–18 高峰，其余时段半价）。未覆盖的模型按 0 计，可在插件配置 pricing 中新增或覆盖价格。</p>
       </>}
     </div></main>
   </div>

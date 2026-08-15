@@ -47,6 +47,8 @@ export interface ModelStats extends TokenBreakdown {
   tokens: number
   calls: number
   percent: number
+  /** Estimated cost in the snapshot currency. */
+  cost: number
 }
 
 export interface DayStats extends TokenBreakdown {
@@ -56,17 +58,25 @@ export interface DayStats extends TokenBreakdown {
   messages: number
   sessions: number
   models: Record<string, number>
+  /** Estimated cost per "provider/model" key for this day. */
+  modelCosts: Record<string, number>
+  /** Estimated cost for this day. */
+  cost: number
 }
 
 export interface StatsSnapshot {
   generatedAt: number
   range: { from: string; to: string; timeZone: string }
+  /** Currency symbol used for all estimated costs in this snapshot. */
+  currency: string
   totals: {
     tokens: number
     sessions: number
     messages: number
     activeDays: number
     currentStreak: number
+    /** Estimated cost in the snapshot currency. */
+    cost: number
   } & TokenBreakdown
   mostUsedModel: ModelStats | null
   allTime: {

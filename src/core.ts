@@ -1,4 +1,6 @@
 import type { SessionEvent, SessionHeader } from '@deepseek-ai/dsh-session'
+import { estimateCost, resolvePricing } from './pricing.js'
+import type { PricingTable } from './pricing.js'
 import type {
   ActivityRecord,
   DayStats,
@@ -101,7 +103,7 @@ function datesBetween(from: string, to: string): string[] {
 }
 
 function newDay(date: string): DayStats {
-  return { date, tokens: 0, calls: 0, messages: 0, sessions: 0, models: {}, ...ZERO_TOKENS() }
+  return { date, tokens: 0, calls: 0, messages: 0, sessions: 0, models: {}, modelCosts: {}, cost: 0, ...ZERO_TOKENS() }
 }
 
 function inScope(session: SessionSummary, query: StatsQuery): boolean {
@@ -111,7 +113,12 @@ function inScope(session: SessionSummary, query: StatsQuery): boolean {
   return true
 }
 
-export function aggregateStats(sessions: Iterable<SessionSummary>, query: StatsQuery): StatsSnapshot {
+export function aggregateStats(
+  sessions: Iterable<SessionSummary>,
+  query: StatsQuery,
+  pricingTable: PricingTable | null = null,
+  currency = '¥',
+): StatsSnapshot {
   const allSessions = [...sessions]
   const format = formatter(query.timeZone)
   const days = datesBetween(query.from, query.to).map(newDay)
@@ -120,8 +127,8 @@ export function aggregateStats(sessions: Iterable<SessionSummary>, query: StatsQ
   const models = new Map<string, ModelStats>()
   const sessionIds = new Set<string>()
   const activeDates = new Set<string>()
-  const totals = { tokens: 0, sessions: 0, messages: 0, activeDays: 0, currentStreak: 0, ...ZERO_TOKENS() }
-  const allTimeTotals = { tokens: 0, sessions: 0, messages: 0, activeDays: 0, currentStreak: 0, ...ZERO_TOKENS() }
+  const totals = { tokens: 0, sessions: 0, messages: 0, activeDays: 0, currentStreak: 0, cost: 0, ...ZERO_TOKENS() }
+  const allTimeTotals = { tokens: 0, sessions: 0, messages: 0, activeDays: 0, currentStreak: 0, cost: 0, ...ZERO_TOKENS() }
   const allTimeModels = new Map<string, ModelStats>()
   const allTimeSessionIds = new Set<string>()
   const allTimeActiveDates = new Set<string>()
@@ -135,20 +142,24 @@ export function aggregateStats(sessions: Iterable<SessionSummary>, query: StatsQ
       allTimeTotals.messages += 1
       allTimeSessionActive = true
       allTimeActiveDates.add(dayKey)
+      let cost = 0
       if (activity.kind === 'assistant' && activity.tokens !== undefined) {
         const provider = activity.provider ?? 'unknown'
         const model = activity.model ?? 'unknown'
         const key = `${provider}/${model}`
+        cost = estimateCost(resolvePricing(provider, model, pricingTable), activity.tokens, activity.time)
         let modelStats = allTimeModels.get(key)
         if (modelStats === undefined) {
-          modelStats = { key, provider, model, tokens: 0, calls: 0, percent: 0, ...ZERO_TOKENS() }
+          modelStats = { key, provider, model, tokens: 0, calls: 0, percent: 0, cost: 0, ...ZERO_TOKENS() }
           allTimeModels.set(key, modelStats)
         }
         const amount = addTokens(modelStats, activity.tokens)
         modelStats.tokens += amount
         modelStats.calls += 1
+        modelStats.cost += cost
         allTimeTotals.tokens += amount
         addTokens(allTimeTotals, activity.tokens)
+        allTimeTotals.cost += cost
       }
       const day = byDate.get(dayKey)
       if (day === undefined) continue
@@ -166,17 +177,21 @@ export function aggregateStats(sessions: Iterable<SessionSummary>, query: StatsQ
       const key = `${provider}/${model}`
       let modelStats = models.get(key)
       if (modelStats === undefined) {
-        modelStats = { key, provider, model, tokens: 0, calls: 0, percent: 0, ...ZERO_TOKENS() }
+        modelStats = { key, provider, model, tokens: 0, calls: 0, percent: 0, cost: 0, ...ZERO_TOKENS() }
         models.set(key, modelStats)
       }
       const amount = addTokens(modelStats, activity.tokens)
       modelStats.tokens += amount
       modelStats.calls += 1
+      modelStats.cost += cost
       day.tokens += amount
       day.models[key] = (day.models[key] ?? 0) + amount
+      day.modelCosts[key] = (day.modelCosts[key] ?? 0) + cost
+      day.cost += cost
       addTokens(day, activity.tokens)
       totals.tokens += amount
       addTokens(totals, activity.tokens)
+      totals.cost += cost
     }
     if (sessionActive) sessionIds.add(session.id)
     if (allTimeSessionActive) allTimeSessionIds.add(session.id)
@@ -217,6 +232,7 @@ export function aggregateStats(sessions: Iterable<SessionSummary>, query: StatsQ
   return {
     generatedAt: Date.now(),
     range: { from: query.from, to: query.to, timeZone: query.timeZone },
+    currency,
     totals,
     mostUsedModel: sortedModels[0] ?? null,
     allTime: { totals: allTimeTotals, mostUsedModel: sortedAllTimeModels[0] ?? null },
@@ -232,14 +248,19 @@ export function aggregateStats(sessions: Iterable<SessionSummary>, query: StatsQ
 
 export function exportCsv(snapshot: StatsSnapshot): string {
   const quote = (value: string | number): string => `"${String(value).replaceAll('"', '""')}"`
-  const header = ['date', 'model', 'provider', 'tokens', 'input', 'output', 'cache_read', 'cache_write', 'messages', 'sessions']
+  const header = ['date', 'model', 'provider', 'tokens', 'input', 'output', 'cache_read', 'cache_write', 'cost', 'messages', 'sessions']
   const rows: string[][] = []
   for (const day of snapshot.days) {
     const entries = Object.entries(day.models)
-    if (entries.length === 0) rows.push([day.date, '', '', '0', '0', '0', '0', '0', String(day.messages), String(day.sessions)])
+    if (entries.length === 0) rows.push([day.date, '', '', '0', '0', '0', '0', '0', '', String(day.messages), String(day.sessions)])
     for (const [key, tokens] of entries) {
       const model = snapshot.models.find(item => item.key === key)
-      rows.push([day.date, model?.model ?? key, model?.provider ?? '', String(tokens), '', '', '', '', String(day.messages), String(day.sessions)])
+      const dayCost = day.modelCosts[key]
+      rows.push([
+        day.date, model?.model ?? key, model?.provider ?? '', String(tokens), '', '', '', '',
+        dayCost === undefined ? '' : String(Math.round(dayCost * 10_000) / 10_000),
+        String(day.messages), String(day.sessions),
+      ])
     }
   }
   return [header, ...rows].map(row => row.map(quote).join(',')).join('\r\n')
