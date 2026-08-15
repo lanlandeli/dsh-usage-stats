@@ -54,10 +54,18 @@ dsh plugin --profile web remove dsh-usage-stats
 | **Overview** | Lifetime token, session, message, active-day, streak, and top-model totals |
 | **Daily trends** | Recent 7-day or 30-day token usage with per-model hover details |
 | **Activity heatmap** | One year of activity levels with daily token and call details |
-| **Scope filters** | Filter by workspace, main task, or subtask; inherited parent context is excluded from subtask usage |
+| **Scope filters** | Filter by workspace, main task, or subtask |
 | **Data export** | Export CSV or JSON for archival or further analysis |
 | **Theme support** | Follow the Harness light or dark theme automatically |
 | **Lightweight runtime** | No third-party charting library and no background polling |
+
+## Fixed
+
+### Inherited parent context counted as subtask usage
+
+`0.1.13` fixed an issue where forked subtasks attributed inherited parent context to their own usage. Subtasks now count only calls they produced themselves; after upgrading, statistics cached by older versions are invalidated and rebuilt using the corrected definition.
+
+Thanks to [@Grivn](https://github.com/Grivn) for reporting this in [#1](https://github.com/lanlandeli/dsh-usage-stats/pull/1).
 
 ## Configuration
 

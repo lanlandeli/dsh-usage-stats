@@ -3,6 +3,13 @@
 All notable changes are documented here. This project follows Semantic
 Versioning while DeepSeek Harness remains in developer preview.
 
+## [0.1.14] - 2026-08-15
+
+### Changed
+
+- Moved the inherited-subtask-context correction out of the feature table and
+  into a dedicated fixed-issues section in both README files.
+
 ## [0.1.13] - 2026-08-15
 
 ### Fixed
