@@ -56,6 +56,7 @@ dsh plugin --profile web remove dsh-usage-stats
 | 🔥 **活跃热力图** | 以颜色深度表示一年内各日期的 Token 用量，悬停可查看 Token 数量及调用轮次 |
 | 🎯 **范围筛选** | 支持按工作区、主任务或子任务限定统计范围 |
 | 💾 **数据导出** | 支持导出 CSV 或 JSON，用于归档或进一步分析 |
+| 🌐 **中英文界面** | 自动跟随 Harness 的语言设置切换中文或英文 |
 | 🎨 **主题适配** | 自动跟随 Harness 的浅色或深色主题 |
 | ⚡ **轻量运行** | 无第三方图表库、无后台轮询，减少额外的网络请求与运行开销 |
 
@@ -64,8 +65,6 @@ dsh plugin --profile web remove dsh-usage-stats
 ### 子任务继承上下文重复计入
 
 `0.1.13` 修复了 fork 子任务将父会话继承上下文重复计入自身用量的问题。子任务现在只统计自身产生的调用；升级后，旧版统计缓存会自动失效并按新口径重建。
-
-感谢 [@Grivn](https://github.com/Grivn) 在 [#1](https://github.com/lanlandeli/dsh-usage-stats/pull/1) 中报告该问题。
 
 ## ⚙️ 配置
 
@@ -107,6 +106,11 @@ Harness 仍在持续更新。本文仅声明经过实际测试的运行环境；
 - 错误日志或界面截图。
 
 完整的环境信息和复现步骤有助于定位问题。涉及安全问题时，请勿在公开 Issue 中提交 API 密钥、访问令牌或本机数据，报告方式见 [安全策略](./SECURITY.md)。
+
+## 🙏 致谢
+
+- 感谢 [@Grivn](https://github.com/Grivn) 在 [#1](https://github.com/lanlandeli/dsh-usage-stats/pull/1) 中发现并分析子任务继承上下文重复统计问题。
+- 感谢 [@yzke](https://github.com/yzke) 在 [#2](https://github.com/lanlandeli/dsh-usage-stats/pull/2) 中提出并实现中英文界面适配方案。
 
 ## 📜 许可证
 

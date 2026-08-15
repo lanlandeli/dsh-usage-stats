@@ -1,4 +1,5 @@
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
@@ -6,9 +7,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { StatsSnapshot, TaskScope } from '../types.js'
+import { formatDateLabel, installLocale, useLocale } from './i18n.js'
 import { styles } from './styles.js'
 
-export const inject = ['slots']
+export const inject = ['slots', 'locale']
 
 type IconName = 'chart' | 'close' | 'back' | 'download' | 'tokens' | 'chat' | 'message' | 'calendar' | 'streak' | 'model'
 
@@ -51,8 +53,9 @@ type FooterProps = PropsRuntime<'sidebar.footer.action'> & BoundInjected
 type OverlayProps = PropsRuntime<'shell.overlay'> & BoundInjected
 
 function FooterAction({ wide, show }: FooterProps): ReactNode {
-  return <button data-usage-stats className="us-nav" data-rail={!wide} onClick={show} title={wide ? undefined : '使用统计'} aria-label="使用统计">
-    <Icon name="chart" />{wide && <span>使用统计</span>}
+  const { t } = useLocale()
+  return <button data-usage-stats className="us-nav" data-rail={!wide} onClick={show} title={wide ? undefined : t('nav')} aria-label={t('nav')}>
+    <Icon name="chart" />{wide && <span>{t('nav')}</span>}
   </button>
 }
 
@@ -63,8 +66,8 @@ function localDate(offset = 0): string {
   return `${year}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-function compact(value: number): string {
-  return new Intl.NumberFormat('zh-CN', { notation: value >= 10_000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(value)
+function compact(value: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { notation: value >= 10_000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(value)
 }
 
 function Card({ icon, label, value, detail }: { icon: IconName; label: string; value: ReactNode; detail?: string }): ReactNode {
@@ -103,33 +106,27 @@ function SelectControl({ label, value, options, onChange }: { label: string; val
 }
 
 function Heatmap({ snapshot }: { snapshot: StatsSnapshot }): ReactNode {
+  const { t, lang, numberLocale } = useLocale()
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null)
   const max = Math.max(1, ...snapshot.days.map(day => day.tokens))
   const level = (tokens: number): number => tokens === 0 ? 0 : Math.max(1, Math.min(5, Math.ceil(Math.log1p(tokens) / Math.log1p(max) * 5)))
-  const tooltipDate = (date: string): string => {
-    const [, month = '', day = ''] = date.split('-')
-    return `${Number(month)}月${Number(day)}日`
-  }
   const showTip = (target: HTMLElement, text: string): void => {
     const rect = target.getBoundingClientRect()
     setTip({ x: Math.min(window.innerWidth - 150, Math.max(150, rect.left + rect.width / 2)), y: rect.top - 10, text })
   }
-  return <><section className="us-panel us-heat-panel"><div className="us-panel-head"><span className="us-panel-title">活跃热力图</span><span className="us-panel-note us-heat-legend"><span>较少</span>{[0,1,2,3,4,5].map(item => <i key={item} className="us-cell" data-level={item} />)}<span>较多</span></span></div><div className="us-heat-scroll"><div className="us-heat-week"><span>一</span><span>三</span><span>五</span></div><div className="us-heat">{snapshot.days.map(day => {
-    const text = `${tooltipDate(day.date)}：${compact(day.tokens)} Tokens · ${day.calls} 轮`
+  return <><section className="us-panel us-heat-panel"><div className="us-panel-head"><span className="us-panel-title">{t('heatmap')}</span><span className="us-panel-note us-heat-legend"><span>{t('less')}</span>{[0,1,2,3,4,5].map(item => <i key={item} className="us-cell" data-level={item} />)}<span>{t('more')}</span></span></div><div className="us-heat-scroll"><div className="us-heat-week"><span>{t('mon')}</span><span>{t('wed')}</span><span>{t('fri')}</span></div><div className="us-heat">{snapshot.days.map(day => {
+    const text = `${formatDateLabel(day.date, lang)}: ${compact(day.tokens, numberLocale)} Tokens · ${day.calls} ${t('callsSuffix')}`
     return <span className="us-cell us-cell-tip" key={day.date} data-level={level(day.tokens)} aria-label={text} tabIndex={0} onMouseEnter={event => showTip(event.currentTarget, text)} onMouseLeave={() => setTip(null)} onFocus={event => showTip(event.currentTarget, text)} onBlur={() => setTip(null)} />
   })}</div></div></section>{tip && createPortal(<div data-usage-stats className="us-floating-tip" role="tooltip" style={{ left: tip.x, top: tip.y }}>{tip.text}</div>, document.body)}</>
 }
 
 function DailyChart({ snapshot }: { snapshot: StatsSnapshot }): ReactNode {
+  const { t, lang, numberLocale } = useLocale()
   const [tip, setTip] = useState<{ x: number; y: number; date: string; total: number; rows: { key: string; name: string; value: number; color: string }[] } | null>(null)
   const max = Math.max(1, ...snapshot.days.map(day => day.tokens))
   const visibleModels = snapshot.models.slice(0, 6)
   const colors = ['#1684ff', '#219653', '#9368ef', '#f59e0b', '#ef5da8', '#22b8b5']
   const tickEvery = snapshot.days.length <= 8 ? 1 : Math.max(1, Math.ceil(snapshot.days.length / 7))
-  const dateLabel = (date: string): string => {
-    const [, month = '', day = ''] = date.split('-')
-    return `${Number(month)}月${Number(day)}日`
-  }
   const showTip = (target: HTMLElement, day: StatsSnapshot['days'][number]): void => {
     const rect = target.getBoundingClientRect()
     const rows = visibleModels.flatMap((model, index) => {
@@ -141,27 +138,30 @@ function DailyChart({ snapshot }: { snapshot: StatsSnapshot }): ReactNode {
     const x = Math.min(window.innerWidth - halfWidth - 12, Math.max(halfWidth + 12, rect.left + rect.width / 2))
     const preferredY = rect.top > halfHeight + 24 ? rect.top - halfHeight - 12 : rect.bottom + halfHeight + 12
     const y = Math.min(window.innerHeight - halfHeight - 12, Math.max(halfHeight + 12, preferredY))
-    setTip({ x, y, date: dateLabel(day.date), total: day.tokens, rows })
+    setTip({ x, y, date: formatDateLabel(day.date, lang), total: day.tokens, rows })
   }
-  return <><section className="us-panel us-trend"><div className="us-panel-head"><span className="us-panel-title">按天 Token 趋势</span></div><div className="us-chart-frame"><div className="us-grid-lines"><i /><i /><i /><i /></div><div className="us-chart-scroll"><div className="us-chart" data-dense={snapshot.days.length > 14}>{snapshot.days.map((day, dayIndex) => <div className="us-bar-column" key={day.date}><div className="us-bar-wrap">{day.tokens > 0 && <div className="us-bar-hit" style={{ height: `${day.tokens / max * 100}%` }} tabIndex={0} aria-label={`${dateLabel(day.date)}，${compact(day.tokens)} tokens`} onMouseEnter={event => showTip(event.currentTarget, day)} onMouseLeave={() => setTip(null)} onFocus={event => showTip(event.currentTarget, day)} onBlur={() => setTip(null)}>{visibleModels.map((model, modelIndex) => {
+  return <><section className="us-panel us-trend"><div className="us-panel-head"><span className="us-panel-title">{t('dailyTrend')}</span></div><div className="us-chart-frame"><div className="us-grid-lines"><i /><i /><i /><i /></div><div className="us-chart-scroll"><div className="us-chart" data-dense={snapshot.days.length > 14}>{snapshot.days.map((day, dayIndex) => <div className="us-bar-column" key={day.date}><div className="us-bar-wrap">{day.tokens > 0 && <div className="us-bar-hit" style={{ height: `${day.tokens / max * 100}%` }} tabIndex={0} aria-label={`${formatDateLabel(day.date, lang)}, ${compact(day.tokens, numberLocale)} tokens`} onMouseEnter={event => showTip(event.currentTarget, day)} onMouseLeave={() => setTip(null)} onFocus={event => showTip(event.currentTarget, day)} onBlur={() => setTip(null)}>{visibleModels.map((model, modelIndex) => {
     const value = day.models[model.key] ?? 0
     if (value === 0) return null
     return <i className="us-bar-segment" key={model.key} style={{ height: `${value / day.tokens * 100}%`, background: colors[modelIndex] }} />
-  })}</div>}</div><span className="us-date-label">{dayIndex % tickEvery === 0 || dayIndex === snapshot.days.length - 1 ? dateLabel(day.date) : ''}</span></div>)}</div></div></div><div className="us-legend">{visibleModels.map((model, index) => <span key={model.key}><i className="us-dot" style={{ background: colors[index] }} />{model.model}</span>)}</div></section>{tip && createPortal(<div data-usage-stats className="us-chart-tip" role="tooltip" style={{ left: tip.x, top: tip.y }}><div className="us-chart-tip-head"><strong>{tip.date}</strong><span>{compact(tip.total)} tokens</span></div>{tip.rows.map(row => <div className="us-chart-tip-row" key={row.key}><i style={{ background: row.color }} /><span>{row.name}</span><b>{new Intl.NumberFormat('en-US').format(row.value)}</b></div>)}</div>, document.body)}</>
+  })}</div>}</div><span className="us-date-label">{dayIndex % tickEvery === 0 || dayIndex === snapshot.days.length - 1 ? formatDateLabel(day.date, lang) : ''}</span></div>)}</div></div></div><div className="us-legend">{visibleModels.map((model, index) => <span key={model.key}><i className="us-dot" style={{ background: colors[index] }} />{model.model}</span>)}</div></section>{tip && createPortal(<div data-usage-stats className="us-chart-tip" role="tooltip" style={{ left: tip.x, top: tip.y }}><div className="us-chart-tip-head"><strong>{tip.date}</strong><span>{compact(tip.total, numberLocale)} tokens</span></div>{tip.rows.map(row => <div className="us-chart-tip-row" key={row.key}><i style={{ background: row.color }} /><span>{row.name}</span><b>{new Intl.NumberFormat(numberLocale).format(row.value)}</b></div>)}</div>, document.body)}</>
 }
 
 function ModelUsage({ snapshot }: { snapshot: StatsSnapshot }): ReactNode {
+  const { t, numberLocale } = useLocale()
   const p1 = Math.min(100, snapshot.models[0]?.percent ?? 0)
   const p2 = Math.min(100, p1 + (snapshot.models[1]?.percent ?? 0))
-  return <section className="us-panel"><div className="us-panel-head"><span className="us-panel-title">模型用量</span><span className="us-panel-note">输入、输出与缓存合计</span></div><div className="us-model-layout"><div className="us-donut" style={{ '--us-p1': `${p1}%`, '--us-p2': `${p2}%` } as React.CSSProperties}><div className="us-donut-center">{compact(snapshot.totals.tokens)}<small>tokens</small></div></div><div>{snapshot.models.slice(0, 8).map(model => <div className="us-model-row" key={model.key}><span className="us-model-name"><i className="us-dot" />{model.model}</span><span className="us-model-percent">{model.percent.toFixed(model.percent < 10 ? 1 : 0)}%</span><span className="us-model-meta">{model.provider} · {compact(model.tokens)} tokens · {model.calls} 次调用</span></div>)}</div></div></section>
+  return <section className="us-panel"><div className="us-panel-head"><span className="us-panel-title">{t('modelUsage')}</span><span className="us-panel-note">{t('tokenSummary')}</span></div><div className="us-model-layout"><div className="us-donut" style={{ '--us-p1': `${p1}%`, '--us-p2': `${p2}%` } as React.CSSProperties}><div className="us-donut-center">{compact(snapshot.totals.tokens, numberLocale)}<small>tokens</small></div></div><div>{snapshot.models.slice(0, 8).map(model => <div className="us-model-row" key={model.key}><span className="us-model-name"><i className="us-dot" />{model.model}</span><span className="us-model-percent">{model.percent.toFixed(model.percent < 10 ? 1 : 0)}%</span><span className="us-model-meta">{model.provider} · {compact(model.tokens, numberLocale)} tokens · {model.calls} {t('callsCount')}</span></div>)}</div></div></section>
 }
 
 function Breakdown({ snapshot }: { snapshot: StatsSnapshot }): ReactNode {
-  const rows = [['输入',snapshot.totals.input],['输出',snapshot.totals.output],['缓存读取',snapshot.totals.cacheRead],['缓存写入',snapshot.totals.cacheWrite]] as const
-  return <section className="us-panel"><div className="us-panel-head"><span className="us-panel-title">Token 构成</span></div><div className="us-breakdown">{rows.map(([label,value]) => <div className="us-break-item" key={label}><span>{label}</span><strong>{compact(value)}</strong></div>)}</div></section>
+  const { t, numberLocale } = useLocale()
+  const rows = [[t('input'),snapshot.totals.input],[t('output'),snapshot.totals.output],[t('cacheRead'),snapshot.totals.cacheRead],[t('cacheWrite'),snapshot.totals.cacheWrite]] as const
+  return <section className="us-panel"><div className="us-panel-head"><span className="us-panel-title">{t('tokenComposition')}</span></div><div className="us-breakdown">{rows.map(([label,value]) => <div className="us-break-item" key={label}><span>{label}</span><strong>{compact(value, numberLocale)}</strong></div>)}</div></section>
 }
 
 function Dashboard({ hide }: { hide: () => void }): ReactNode {
+  const { t, numberLocale } = useLocale()
   const [days, setDays] = useState(30)
   const [scope, setScope] = useState<TaskScope>('all')
   const [workspace, setWorkspace] = useState('')
@@ -192,19 +192,19 @@ function Dashboard({ hide }: { hide: () => void }): ReactNode {
   }, [scope, workspace])
   useEffect(() => { const onKey = (event: KeyboardEvent): void => { if (event.key === 'Escape') hide() }; window.addEventListener('keydown', onKey); return () => { window.removeEventListener('keydown', onKey) } }, [hide])
   const exportUrl = (format: 'csv' | 'json'): string => `/usage-stats/v1/export.${format}?${query}`
-  const workspaceOptions = useMemo<SelectOption[]>(() => [{ value: '', label: '全部工作区' }, ...(snapshot?.workspaces.map(item => ({ value: item.path, label: `${item.path} (${item.sessions})` })) ?? [])], [snapshot?.workspaces])
-  const scopeOptions: readonly SelectOption[] = [{ value: 'all', label: '全部任务' }, { value: 'main', label: '仅主任务' }, { value: 'subtasks', label: '仅子任务' }]
-  return <div data-usage-stats className="us-shell" role="dialog" aria-modal="true" aria-label="使用统计">
-    <header className="us-top"><div className="us-heading"><div className="us-title">使用统计</div><span className="us-tab">应用用量</span></div><button className="us-back" onClick={hide}><Icon name="back" size={17} />返回对话</button></header>
+  const workspaceOptions = useMemo<SelectOption[]>(() => [{ value: '', label: t('allWorkspaces') }, ...(snapshot?.workspaces.map(item => ({ value: item.path, label: `${item.path} (${item.sessions})` })) ?? [])], [snapshot?.workspaces, t])
+  const scopeOptions: readonly SelectOption[] = [{ value: 'all', label: t('allTasks') }, { value: 'main', label: t('mainOnly') }, { value: 'subtasks', label: t('subtasksOnly') }]
+  return <div data-usage-stats className="us-shell" role="dialog" aria-modal="true" aria-label={t('title')}>
+    <header className="us-top"><div className="us-heading"><div className="us-title">{t('title')}</div><span className="us-tab">{t('appUsage')}</span></div><button className="us-back" onClick={hide}><Icon name="back" size={17} />{t('back')}</button></header>
     <main className="us-scroll"><div className="us-content">
-      <div className="us-range-row"><span className="us-range-label">趋势范围</span><div className="us-segment" aria-label="趋势范围"><button aria-pressed={days === 7} onClick={() => { setDays(7) }}>最近 7 天</button><button aria-pressed={days === 30} onClick={() => { setDays(30) }}>最近 30 天</button></div></div>
+      <div className="us-range-row"><span className="us-range-label">{t('rangeLabel')}</span><div className="us-segment" aria-label={t('rangeLabel')}><button aria-pressed={days === 7} onClick={() => { setDays(7) }}>{t('last7Days')}</button><button aria-pressed={days === 30} onClick={() => { setDays(30) }}>{t('last30Days')}</button></div></div>
       <div className="us-toolbar us-filterbar">
-        <SelectControl label="工作区" value={workspace} options={workspaceOptions} onChange={setWorkspace} />
-        <SelectControl label="任务范围" value={scope} options={scopeOptions} onChange={value => setScope(value as TaskScope)} />
+        <SelectControl label={t('workspace')} value={workspace} options={workspaceOptions} onChange={setWorkspace} />
+        <SelectControl label={t('taskScope')} value={scope} options={scopeOptions} onChange={value => setScope(value as TaskScope)} />
         <span className="us-spacer" /><a className="us-export" href={exportUrl('csv')}><Icon name="download" size={15} />CSV</a><a className="us-export" href={exportUrl('json')}><Icon name="download" size={15} />JSON</a>
       </div>
-      {error ? <div className="us-state"><div><p>统计数据暂时无法读取</p><small>{error}</small></div></div> : snapshot === null ? <div className="us-state"><div><div className="us-spinner" />正在建立本地增量索引…</div></div> : <>
-        <div className="us-cards"><Card icon="tokens" label="Tokens 用量" value={compact(snapshot.allTime.totals.tokens)} detail={`输入 ${compact(snapshot.allTime.totals.input)} · 输出 ${compact(snapshot.allTime.totals.output)}`} /><Card icon="chat" label="会话数量" value={snapshot.allTime.totals.sessions} /><Card icon="message" label="消息数量" value={snapshot.allTime.totals.messages} /><Card icon="calendar" label="活跃天数" value={snapshot.allTime.totals.activeDays} /><Card icon="streak" label="当前连续天数" value={snapshot.allTime.totals.currentStreak} />{snapshot.allTime.mostUsedModel ? <Card icon="model" label="最常用模型" value={<span style={{ fontSize: '18px' }}>{snapshot.allTime.mostUsedModel.model}</span>} detail={`${snapshot.allTime.mostUsedModel.percent.toFixed(1)}% · ${snapshot.allTime.mostUsedModel.provider}`} /> : <Card icon="model" label="最常用模型" value={<span style={{ fontSize: '18px' }}>暂无数据</span>} />}</div>
+      {error ? <div className="us-state"><div><p>{t('loadError')}</p><small>{error}</small></div></div> : snapshot === null ? <div className="us-state"><div><div className="us-spinner" />{t('loading')}</div></div> : <>
+        <div className="us-cards"><Card icon="tokens" label={t('tokensUsage')} value={compact(snapshot.allTime.totals.tokens, numberLocale)} detail={t('inputOutputDetail', { input: compact(snapshot.allTime.totals.input, numberLocale), output: compact(snapshot.allTime.totals.output, numberLocale) })} /><Card icon="chat" label={t('sessions')} value={snapshot.allTime.totals.sessions} /><Card icon="message" label={t('messages')} value={snapshot.allTime.totals.messages} /><Card icon="calendar" label={t('activeDays')} value={snapshot.allTime.totals.activeDays} /><Card icon="streak" label={t('streak')} value={snapshot.allTime.totals.currentStreak} />{snapshot.allTime.mostUsedModel ? <Card icon="model" label={t('mostUsedModel')} value={<span style={{ fontSize: '18px' }}>{snapshot.allTime.mostUsedModel.model}</span>} detail={`${snapshot.allTime.mostUsedModel.percent.toFixed(1)}% · ${snapshot.allTime.mostUsedModel.provider}`} /> : <Card icon="model" label={t('mostUsedModel')} value={<span style={{ fontSize: '18px' }}>{t('noData')}</span>} />}</div>
         <Heatmap snapshot={heatmap ?? snapshot} /><DailyChart snapshot={snapshot} /><ModelUsage snapshot={snapshot} /><Breakdown snapshot={snapshot} />
       </>}
     </div></main>
@@ -216,7 +216,9 @@ function Overlay({ useVisibility, hide }: OverlayProps): ReactNode {
   return open ? <Dashboard hide={hide} /> : null
 }
 
-export function apply(ctx: ClientContext): void {
+export function apply(ctx: ClientContext & { locale: LocaleRuntime }): void {
+  const uninstallLocale = installLocale(ctx.locale)
+  ctx.effect(() => uninstallLocale, 'usage-stats: locale dictionaries')
   const style = document.createElement('style')
   style.dataset.plugin = 'dsh-usage-stats'
   style.textContent = styles

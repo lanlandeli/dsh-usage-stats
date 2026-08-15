@@ -56,6 +56,7 @@ dsh plugin --profile web remove dsh-usage-stats
 | **Activity heatmap** | One year of activity levels with daily token and call details |
 | **Scope filters** | Filter by workspace, main task, or subtask |
 | **Data export** | Export CSV or JSON for archival or further analysis |
+| **Chinese and English UI** | Follow the Harness language setting automatically |
 | **Theme support** | Follow the Harness light or dark theme automatically |
 | **Lightweight runtime** | No third-party charting library and no background polling |
 
@@ -64,8 +65,6 @@ dsh plugin --profile web remove dsh-usage-stats
 ### Inherited parent context counted as subtask usage
 
 `0.1.13` fixed an issue where forked subtasks attributed inherited parent context to their own usage. Subtasks now count only calls they produced themselves; after upgrading, statistics cached by older versions are invalidated and rebuilt using the corrected definition.
-
-Thanks to [@Grivn](https://github.com/Grivn) for reporting this in [#1](https://github.com/lanlandeli/dsh-usage-stats/pull/1).
 
 ## Configuration
 
@@ -100,6 +99,11 @@ Harness is evolving rapidly. Only environments tested by this project are declar
 For a missing plugin entry, incomplete statistics, display errors, or version compatibility problems, [submit an Issue](https://github.com/lanlandeli/dsh-usage-stats/issues/new) with the Harness and Node.js versions, installation command, reproduction steps, and relevant logs or screenshots.
 
 Do not include API keys, access tokens, or private local data in a public Issue. See the [security policy](./SECURITY.md) for vulnerability reporting.
+
+## Acknowledgements
+
+- Thanks to [@Grivn](https://github.com/Grivn) for identifying and analyzing inherited parent context being counted as subtask usage in [#1](https://github.com/lanlandeli/dsh-usage-stats/pull/1).
+- Thanks to [@yzke](https://github.com/yzke) for proposing and implementing the Chinese and English UI adaptation in [#2](https://github.com/lanlandeli/dsh-usage-stats/pull/2).
 
 ## License
 

@@ -3,6 +3,18 @@
 All notable changes are documented here. This project follows Semantic
 Versioning while DeepSeek Harness remains in developer preview.
 
+## [0.1.15] - 2026-08-15
+
+### Added
+
+- Added Chinese and English dashboard copy that follows the Harness language
+  setting without introducing a separate plugin preference.
+- Registered and disposed locale dictionaries through the Harness locale
+  lifecycle so plugin reloads do not leave duplicate registrations behind.
+
+Thanks to [@yzke](https://github.com/yzke) for proposing the localization work
+in [#2](https://github.com/lanlandeli/dsh-usage-stats/pull/2).
+
 ## [0.1.14] - 2026-08-15
 
 ### Changed
