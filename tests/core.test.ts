@@ -35,6 +35,10 @@ function assistant(seq: number, time: string): SessionEvent {
   } as unknown as SessionEvent
 }
 
+function marker(type: 'session/end-seed' | 'subagent/descriptor', seq: number): SessionEvent {
+  return { type, seq, time: Date.parse(`2026-08-01T01:00:${String(seq).padStart(2, '0')}Z`), data: {} } as unknown as SessionEvent
+}
+
 describe('usage statistics core', () => {
   it('never counts synthetic injected user context as a human message', () => {
     expect(activityFromEvent(synthetic(0, '2026-08-01T01:00:00Z'))).toBeNull()
@@ -100,5 +104,60 @@ describe('usage statistics core', () => {
     expect(result.totals).toMatchObject({ tokens: 170, messages: 2, activeDays: 1 })
     expect(result.allTime.totals).toMatchObject({ tokens: 340, messages: 4, activeDays: 2, sessions: 1 })
     expect(result.allTime.mostUsedModel).toMatchObject({ model: 'deepseek-chat', tokens: 340 })
+  })
+
+  it('excludes the inherited fork prefix from child usage', () => {
+    const child = { ...header, id: 's-child', parentSession: 's-main', seedLength: 2 } as unknown as SessionHeader
+    const summary = summarizeSession(child, [
+      human(0, '2026-08-01T01:00:00Z'),
+      assistant(1, '2026-08-01T01:00:01Z'),
+      marker('session/end-seed', 2),
+      human(3, '2026-08-01T01:00:03Z'),
+      assistant(4, '2026-08-01T01:00:04Z'),
+    ])
+
+    expect(summary.activities.map(activity => activity.seq)).toEqual([3, 4])
+    const result = aggregateStats([summary], { from: '2026-08-01', to: '2026-08-01', timeZone: 'UTC', scope: 'subtasks' })
+    expect(result.totals).toMatchObject({ tokens: 170, messages: 2 })
+  })
+
+  it('keeps all child-owned usage across repeated resume boundaries', () => {
+    const child = { ...header, id: 's-child', parentSession: 's-main', seedLength: 1 } as unknown as SessionHeader
+    const summary = summarizeSession(child, [
+      assistant(0, '2026-08-01T01:00:00Z'),
+      marker('session/end-seed', 1),
+      assistant(2, '2026-08-01T01:00:02Z'),
+      marker('session/end-seed', 3),
+      assistant(4, '2026-08-01T01:00:04Z'),
+    ])
+
+    expect(summary.activities.map(activity => activity.seq)).toEqual([2, 4])
+  })
+
+  it('does not treat repeated subagent descriptors as ownership boundaries', () => {
+    const child = { ...header, id: 's-child', parentSession: 's-main', seedLength: 1 } as unknown as SessionHeader
+    const summary = summarizeSession(child, [
+      assistant(0, '2026-08-01T01:00:00Z'),
+      marker('subagent/descriptor', 1),
+      assistant(2, '2026-08-01T01:00:02Z'),
+      marker('subagent/descriptor', 3),
+      assistant(4, '2026-08-01T01:00:04Z'),
+    ])
+
+    expect(summary.activities.map(activity => activity.seq)).toEqual([2, 4])
+  })
+
+  it('keeps child events when no inherited seed exists', () => {
+    const child = { ...header, id: 's-child', parentSession: 's-main', seedLength: 0 } as unknown as SessionHeader
+    const legacyChild = { ...header, id: 's-legacy-child', parentSession: 's-main' } as unknown as SessionHeader
+
+    expect(summarizeSession(child, [assistant(0, '2026-08-01T01:00:00Z')]).activities).toHaveLength(1)
+    expect(summarizeSession(legacyChild, [assistant(0, '2026-08-01T01:00:00Z')]).activities).toHaveLength(1)
+  })
+
+  it('never applies a seed boundary to root sessions', () => {
+    const rootWithSeedMetadata = { ...header, seedLength: 5 } as unknown as SessionHeader
+    const summary = summarizeSession(rootWithSeedMetadata, [assistant(0, '2026-08-01T01:00:00Z')])
+    expect(summary.activities).toHaveLength(1)
   })
 })

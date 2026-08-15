@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -48,6 +48,20 @@ async function stopServer() {
 
 try {
   await mkdir(packageDir, { recursive: true })
+  const cacheDirectory = join(dshHome, 'usage-stats')
+  const cachePath = join(cacheDirectory, 'index-v1.json')
+  await mkdir(cacheDirectory, { recursive: true })
+  await writeFile(cachePath, JSON.stringify({
+    schema: 1,
+    sessions: [{
+      id: 'polluted-child', createdAt: 1, parentSession: 'parent', lastSeq: 1, indexedAt: 1,
+      activities: [{
+        seq: 1, time: Date.parse('2026-08-14T00:00:00Z'), kind: 'assistant',
+        provider: 'seed', model: 'inherited',
+        tokens: { input: 9_999_999, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 },
+      }],
+    }],
+  }), 'utf8')
   const packed = await runNode(npmCli, ['pack', '--json', '--ignore-scripts', '--pack-destination', packageDir])
   const packReport = JSON.parse(packed.stdout)
   const filename = packReport[0]?.filename
@@ -96,6 +110,18 @@ try {
   if (!snapshot.allTime?.totals || !Array.isArray(snapshot.days) || snapshot.days.length !== 1) {
     throw new Error('Snapshot schema is incomplete')
   }
+  if (snapshot.allTime.totals.tokens !== 0 || snapshot.allTime.totals.sessions !== 0) {
+    throw new Error('Schema-1 cache was not invalidated')
+  }
+  let rebuiltCache
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    rebuiltCache = JSON.parse(await readFile(cachePath, 'utf8'))
+    if (rebuiltCache.schema === 2) break
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
+  if (rebuiltCache?.schema !== 2 || !Array.isArray(rebuiltCache.sessions) || rebuiltCache.sessions.length !== 0) {
+    throw new Error('Cache was not rebuilt with schema 2')
+  }
   const headResponse = await fetch(`${url}/usage-stats/v1/snapshot?${query}`, { method: 'HEAD' })
   if (!headResponse.ok || (await headResponse.text()) !== '') throw new Error('HEAD contract failed')
   const postResponse = await fetch(`${url}/usage-stats/v1/snapshot?${query}`, { method: 'POST' })
@@ -110,7 +136,7 @@ try {
   if (removed.dependencies?.['dsh-usage-stats'] !== undefined) throw new Error('Plugin dependency survived removal')
   if (removed.dsh?.profile?.bundles?.includes('dsh-usage-stats')) throw new Error('Bundle survived removal')
 
-  console.log('Clean-profile lifecycle verified: pack, install, compose, boot, API, export, method fence, remove.')
+  console.log('Clean-profile lifecycle verified: pack, install, schema-1 invalidation, compose, boot, API, export, method fence, schema-2 rebuild, remove.')
 } finally {
   await stopServer()
   await rm(temporary, { recursive: true, force: true })

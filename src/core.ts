@@ -38,8 +38,14 @@ export function activityFromEvent(event: SessionEvent): ActivityRecord | null {
 }
 
 export function summarizeSession(header: SessionHeader, events: readonly SessionEvent[], indexedAt = Date.now()): SessionSummary {
+  // A forked child stores the parent's copied prefix in its own log. The
+  // durable fork boundary is header.seedLength; lifecycle markers such as
+  // session/end-seed may be appended again whenever the child is resumed and
+  // therefore cannot identify the child's original ownership boundary.
+  const firstOwnSeq = header.parentSession !== undefined ? (header.seedLength ?? 0) : 0
   const activities: ActivityRecord[] = []
   for (const event of events) {
+    if (event.seq < firstOwnSeq) continue
     const activity = activityFromEvent(event)
     if (activity !== null) activities.push(activity)
   }

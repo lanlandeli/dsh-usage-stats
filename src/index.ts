@@ -64,7 +64,8 @@ function parseQuery(req: IncomingMessage): StatsQuery {
 function isCache(value: unknown): value is IndexCache {
   if (typeof value !== 'object' || value === null) return false
   const record = value as Partial<IndexCache>
-  return record.schema === 1 && Array.isArray(record.sessions)
+  // Schema 2 summaries exclude inherited fork prefixes from child sessions.
+  return record.schema === 2 && Array.isArray(record.sessions)
 }
 
 class UsageIndex {
@@ -92,7 +93,7 @@ class UsageIndex {
   }
 
   private async initialize(): Promise<void> {
-    await this.loadCache()
+    const cacheNeedsRewrite = await this.loadCache()
     const records = await this.ctx.sessionQuery.listSessions()
     const missing = records.filter(record => !this.sessions.has(String(record.header.id)))
     let cursor = 0
@@ -113,7 +114,8 @@ class UsageIndex {
       }
     }
     await Promise.all(Array.from({ length: Math.min(this.config.indexConcurrency, Math.max(1, missing.length)) }, worker))
-    if (missing.length > 0) this.scheduleWrite()
+    if (cacheNeedsRewrite) await this.persist()
+    else if (missing.length > 0) this.scheduleWrite()
   }
 
   private acceptLive(session: Session, event: SessionEvent): void {
@@ -126,17 +128,21 @@ class UsageIndex {
     if (appendActivity(summary, event)) this.scheduleWrite()
   }
 
-  private async loadCache(): Promise<void> {
+  /** Returns true when an existing cache must be replaced after reindexing. */
+  private async loadCache(): Promise<boolean> {
     try {
       const parsed: unknown = JSON.parse(await readFile(this.cachePath, 'utf8'))
-      if (!isCache(parsed)) return
+      if (!isCache(parsed)) return true
       for (const session of parsed.sessions) {
         if (typeof session.id === 'string' && Array.isArray(session.activities)) this.sessions.set(session.id, session)
       }
+      return false
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
         this.ctx.logger.warn(error instanceof Error ? error : new Error(String(error)))
+        return true
       }
+      return false
     }
   }
 
@@ -150,7 +156,7 @@ class UsageIndex {
   }
 
   private async persist(): Promise<void> {
-    const data: IndexCache = { schema: 1, sessions: [...this.sessions.values()] }
+    const data: IndexCache = { schema: 2, sessions: [...this.sessions.values()] }
     const temporary = `${this.cachePath}.${process.pid}.tmp`
     await mkdir(dirname(this.cachePath), { recursive: true })
     await writeFile(temporary, JSON.stringify(data), { encoding: 'utf8', mode: 0o600 })

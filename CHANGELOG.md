@@ -3,6 +3,20 @@
 All notable changes are documented here. This project follows Semantic
 Versioning while DeepSeek Harness remains in developer preview.
 
+## [0.1.13] - 2026-08-15
+
+### Fixed
+
+- Excluded the parent-session prefix inherited by forked subtasks while keeping
+  all usage produced by the child across later resume lifecycles.
+- Invalidated schema-1 caches so previously inflated child summaries are rebuilt.
+- Added regression coverage for repeated seed markers, repeated subagent
+  descriptors, zero-seed children, legacy child headers, root sessions, and
+  schema-1 cache invalidation/rebuild.
+
+Thanks to [@Grivn](https://github.com/Grivn) for reporting the inherited-seed
+double counting in [#1](https://github.com/lanlandeli/dsh-usage-stats/pull/1).
+
 ## [0.1.12] - 2026-08-14
 
 ### Changed
