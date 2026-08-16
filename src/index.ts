@@ -7,8 +7,8 @@ import type { Session, SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-query'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import z from '@deepseek-ai/schemastery'
-import { aggregateStats, appendActivity, exportCsv, summarizeSession } from './core.js'
-import type { IndexCache, SessionSummary, StatsQuery, TaskScope } from './types.js'
+import { aggregateCalls, aggregateStats, appendActivity, exportCsv, newCollectState, summarizeSession, type CollectState } from './core.js'
+import type { CallsPage, IndexCache, SessionSummary, StatsQuery, TaskScope } from './types.js'
 
 export const name = 'usage-stats'
 export const inject = ['sessionQuery', 'webServer']
@@ -61,6 +61,27 @@ function parseQuery(req: IncomingMessage): StatsQuery {
   return query
 }
 
+/** Pagination, model/provider, and token-threshold filters for `/calls`. */
+function parsePagination(req: IncomingMessage): { page: number; pageSize: number; model: string | undefined; provider: string | undefined; minInputTokens: number | undefined; minOutputTokens: number | undefined } {
+  const url = new URL(req.url ?? '/', 'http://localhost')
+  const page = Number(url.searchParams.get('page') ?? '1')
+  const pageSize = Number(url.searchParams.get('pageSize') ?? '50')
+  if (!Number.isInteger(page) || page < 1) throw new Error('Invalid page')
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 200) throw new Error('Invalid page size')
+  const model = url.searchParams.get('model') ?? undefined
+  const provider = url.searchParams.get('provider') ?? undefined
+  if (model !== undefined && model.length > 4096) throw new Error('Invalid model filter')
+  if (provider !== undefined && provider.length > 4096) throw new Error('Invalid provider filter')
+  const threshold = (name: string): number | undefined => {
+    const raw = url.searchParams.get(name)
+    if (raw === null || raw === '') return undefined
+    const value = Number(raw)
+    if (!Number.isInteger(value) || value < 0) throw new Error(`Invalid ${name}`)
+    return value
+  }
+  return { page, pageSize, model, provider, minInputTokens: threshold('minInputTokens'), minOutputTokens: threshold('minOutputTokens') }
+}
+
 function isCache(value: unknown): value is IndexCache {
   if (typeof value !== 'object' || value === null) return false
   const record = value as Partial<IndexCache>
@@ -70,6 +91,9 @@ function isCache(value: unknown): value is IndexCache {
 
 class UsageIndex {
   private readonly sessions = new Map<string, SessionSummary>()
+  private readonly collectors = new Map<string, CollectState>()
+  /** True once the historical replay finished; served to `/calls` as `indexReady`. */
+  private ready = false
   private readonly cachePath: string
   private writeTimer: ReturnType<typeof setTimeout> | undefined
   private disposed = false
@@ -116,6 +140,7 @@ class UsageIndex {
     await Promise.all(Array.from({ length: Math.min(this.config.indexConcurrency, Math.max(1, missing.length)) }, worker))
     if (cacheNeedsRewrite) await this.persist()
     else if (missing.length > 0) this.scheduleWrite()
+    this.ready = true
   }
 
   private acceptLive(session: Session, event: SessionEvent): void {
@@ -125,7 +150,12 @@ class UsageIndex {
       summary = summarizeSession(session.header, [])
       this.sessions.set(id, summary)
     }
-    if (appendActivity(summary, event)) this.scheduleWrite()
+    let state = this.collectors.get(id)
+    if (state === undefined) {
+      state = newCollectState()
+      this.collectors.set(id, state)
+    }
+    if (appendActivity(summary, event, state)) this.scheduleWrite()
   }
 
   /** Returns true when an existing cache must be replaced after reindexing. */
@@ -170,9 +200,24 @@ class UsageIndex {
       return
     }
     try {
+      const path = new URL(req.url ?? '/', 'http://localhost').pathname
+      if (path === `${this.config.apiPath}/calls`) {
+        const query = parseQuery(req)
+        const pagination = parsePagination(req)
+        const calls = aggregateCalls(this.sessions.values(), { ...query, ...pagination })
+        const page: CallsPage = {
+          indexReady: this.ready,
+          items: calls.items,
+          page: pagination.page,
+          pageSize: pagination.pageSize,
+          total: calls.total,
+          hasMore: calls.total > pagination.page * pagination.pageSize,
+        }
+        sendJson(res, 200, req.method === 'HEAD' ? null : page)
+        return
+      }
       const query = parseQuery(req)
       const snapshot = aggregateStats(this.sessions.values(), query)
-      const path = new URL(req.url ?? '/', 'http://localhost').pathname
       if (path === `${this.config.apiPath}/export.csv`) {
         const csv = exportCsv(snapshot)
         res.writeHead(200, {
@@ -215,4 +260,4 @@ export function apply(ctx: Context, config: Config = {}): void {
 }
 
 export type * from './types.js'
-export { activityFromEvent, aggregateStats, appendActivity, exportCsv, summarizeSession } from './core.js'
+export { aggregateCalls, activityFromEvent, aggregateStats, appendActivity, exportCsv, newCollectState, summarizeSession } from './core.js'

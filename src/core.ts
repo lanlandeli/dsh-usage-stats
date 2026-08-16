@@ -1,6 +1,8 @@
 import type { SessionEvent, SessionHeader } from '@deepseek-ai/dsh-session'
 import type {
   ActivityRecord,
+  CallRecord,
+  CallsQuery,
   DayStats,
   ModelStats,
   SessionSummary,
@@ -15,13 +17,41 @@ function finiteCount(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0
 }
 
-export function activityFromEvent(event: SessionEvent): ActivityRecord | null {
+/** Per-session in-memory state for pairing step timing and reasoning effort. */
+export interface CollectState {
+  openStep: { turn: number; step: number; time: number } | null
+  currentEffort: string | undefined
+}
+
+export function newCollectState(): CollectState {
+  return { openStep: null, currentEffort: undefined }
+}
+
+export function activityFromEvent(event: SessionEvent, state: CollectState = newCollectState()): ActivityRecord | null {
+  if (event.type === 'step/start') {
+    state.openStep = { turn: event.data.turn, step: event.data.step, time: event.time }
+    return null
+  }
+  if (event.type === 'request/header') {
+    const effort = event.data.header?.config?.reasoningEffort
+    if (typeof effort === 'string' && effort.length > 0) state.currentEffort = effort
+    return null
+  }
+  if (event.type === 'step/end' || event.type === 'turn/end') {
+    state.openStep = null
+    return null
+  }
   if (event.type === 'user/message' && event.data.source.kind === 'user') {
     return { seq: event.seq, time: event.time, kind: 'human' }
   }
   if (event.type !== 'assistant/message') return null
   const usage = event.data.usage
-  return {
+  let durationMs: number | undefined
+  if (state.openStep !== null && state.openStep.turn === event.data.turn && state.openStep.step === event.data.step) {
+    durationMs = Math.max(0, event.time - state.openStep.time)
+    state.openStep = null
+  }
+  const activity: ActivityRecord = {
     seq: event.seq,
     time: event.time,
     kind: 'assistant',
@@ -35,6 +65,9 @@ export function activityFromEvent(event: SessionEvent): ActivityRecord | null {
       reasoning: finiteCount(usage?.reasoningTokens),
     },
   }
+  if (durationMs !== undefined) activity.durationMs = durationMs
+  if (state.currentEffort !== undefined) activity.effort = state.currentEffort
+  return activity
 }
 
 export function summarizeSession(header: SessionHeader, events: readonly SessionEvent[], indexedAt = Date.now()): SessionSummary {
@@ -44,9 +77,10 @@ export function summarizeSession(header: SessionHeader, events: readonly Session
   // therefore cannot identify the child's original ownership boundary.
   const firstOwnSeq = header.parentSession !== undefined ? (header.seedLength ?? 0) : 0
   const activities: ActivityRecord[] = []
+  const state = newCollectState()
   for (const event of events) {
     if (event.seq < firstOwnSeq) continue
-    const activity = activityFromEvent(event)
+    const activity = activityFromEvent(event, state)
     if (activity !== null) activities.push(activity)
   }
   const summary: SessionSummary = {
@@ -61,11 +95,11 @@ export function summarizeSession(header: SessionHeader, events: readonly Session
   return summary
 }
 
-export function appendActivity(summary: SessionSummary, event: SessionEvent, indexedAt = Date.now()): boolean {
+export function appendActivity(summary: SessionSummary, event: SessionEvent, state?: CollectState, indexedAt = Date.now()): boolean {
   if (event.seq <= summary.lastSeq) return false
   summary.lastSeq = event.seq
   summary.indexedAt = indexedAt
-  const activity = activityFromEvent(event)
+  const activity = activityFromEvent(event, state ?? newCollectState())
   if (activity !== null) summary.activities.push(activity)
   return true
 }
@@ -234,6 +268,39 @@ export function aggregateStats(sessions: Iterable<SessionSummary>, query: StatsQ
       lastUpdatedAt: allSessions.length === 0 ? null : Math.max(...allSessions.map(session => session.indexedAt)),
     },
   }
+}
+
+export function aggregateCalls(sessions: Iterable<SessionSummary>, query: CallsQuery): { items: CallRecord[]; total: number } {
+  const format = formatter(query.timeZone)
+  const rows: CallRecord[] = []
+  for (const session of sessions) {
+    if (!inScope(session, query)) continue
+    for (const activity of session.activities) {
+      if (activity.kind !== 'assistant') continue
+      if (query.model !== undefined && activity.model !== query.model) continue
+      if (query.provider !== undefined && activity.provider !== query.provider) continue
+      const tokens = activity.tokens ?? ZERO_TOKENS()
+      if (query.minInputTokens !== undefined && tokens.input < query.minInputTokens) continue
+      if (query.minOutputTokens !== undefined && tokens.output < query.minOutputTokens) continue
+      const dayKey = dateKey(activity.time, format)
+      if (dayKey < query.from || dayKey > query.to) continue
+      rows.push({
+        key: `${session.id}:${activity.seq}`,
+        seq: activity.seq,
+        time: activity.time,
+        sessionId: session.id,
+        provider: activity.provider ?? 'unknown',
+        model: activity.model ?? 'unknown',
+        effort: activity.effort ?? null,
+        durationMs: activity.durationMs ?? null,
+        tokens,
+      })
+    }
+  }
+  rows.sort((a, b) => b.time - a.time || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+  const total = rows.length
+  const offset = (query.page - 1) * query.pageSize
+  return { items: rows.slice(offset, offset + query.pageSize), total }
 }
 
 export function exportCsv(snapshot: StatsSnapshot): string {

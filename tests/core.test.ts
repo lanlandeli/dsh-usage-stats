@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SessionEvent, SessionHeader } from '@deepseek-ai/dsh-session'
-import { activityFromEvent, aggregateStats, appendActivity, summarizeSession } from '../src/core.js'
+import { activityFromEvent, aggregateCalls, aggregateStats, appendActivity, newCollectState, summarizeSession } from '../src/core.js'
 import type { SessionSummary } from '../src/types.js'
 
 const header = {
@@ -159,5 +159,71 @@ describe('usage statistics core', () => {
     const rootWithSeedMetadata = { ...header, seedLength: 5 } as unknown as SessionHeader
     const summary = summarizeSession(rootWithSeedMetadata, [assistant(0, '2026-08-01T01:00:00Z')])
     expect(summary.activities).toHaveLength(1)
+  })
+})
+
+function stepStart(seq: number, time: string, turn = 0, step = 0): SessionEvent {
+  return { type: 'step/start', seq, time: Date.parse(time), surfaceOp: 'append', data: { turn, step } } as unknown as SessionEvent
+}
+
+function requestHeader(seq: number, effort: string): SessionEvent {
+  return { type: 'request/header', seq, time: Date.parse('2026-08-01T01:00:00Z'), data: { header: { config: { reasoningEffort: effort } } } } as unknown as SessionEvent
+}
+
+function timedAssistant(seq: number, time: string, turn = 0, step = 0): SessionEvent {
+  return {
+    type: 'assistant/message', seq, time: Date.parse(time), surfaceOp: 'append',
+    data: { turn, step, message: { id: `m${seq}`, role: 'assistant', content: [], source: { kind: 'model', provider: 'deepseek', model: 'deepseek-chat' } }, usage: { inputTokens: 1000, outputTokens: 200, cacheReadTokens: 100, cacheWriteTokens: 0, reasoningTokens: 10 } },
+  } as unknown as SessionEvent
+}
+
+describe('per-call detail (calls)', () => {
+  it('pairs step timing and reasoning effort from a replayed session', () => {
+    const summary = summarizeSession(header, [
+      stepStart(1, '2026-08-01T01:00:00Z'),
+      requestHeader(2, 'medium'),
+      timedAssistant(3, '2026-08-01T01:00:12Z'),
+    ])
+    const activity = summary.activities[0]
+    expect(activity?.durationMs).toBe(12_000)
+    expect(activity?.effort).toBe('medium')
+  })
+
+  it('leaves durationMs and effort absent without a paired start or header', () => {
+    const summary = summarizeSession(header, [timedAssistant(1, '2026-08-01T01:00:00Z')])
+    expect(summary.activities[0]?.durationMs).toBeUndefined()
+    expect(summary.activities[0]?.effort).toBeUndefined()
+  })
+
+  it('pairs live events per session without cross-session bleed', () => {
+    const summaryA: SessionSummary = { ...summarizeSession(header, []), id: 'A', lastSeq: -1, activities: [] }
+    const summaryB: SessionSummary = { ...summarizeSession(header, []), id: 'B', lastSeq: -1, activities: [] }
+    const stateA = newCollectState()
+    const stateB = newCollectState()
+    expect(appendActivity(summaryA, stepStart(1, '2026-08-01T01:00:00Z'), stateA)).toBe(true)
+    expect(appendActivity(summaryB, stepStart(1, '2026-08-01T02:00:00Z'), stateB)).toBe(true)
+    expect(appendActivity(summaryA, timedAssistant(2, '2026-08-01T01:00:10Z'), stateA)).toBe(true)
+    expect(appendActivity(summaryB, timedAssistant(2, '2026-08-01T02:00:05Z'), stateB)).toBe(true)
+    expect(summaryA.activities[0]?.durationMs).toBe(10_000)
+    expect(summaryB.activities[0]?.durationMs).toBe(5_000)
+  })
+
+  it('ignores duplicate out-of-order events without clobbering the open step', () => {
+    const summary = summarizeSession(header, [stepStart(1, '2026-08-01T01:00:00Z'), stepStart(1, '2026-08-01T01:00:00Z')])
+    expect(summary.activities).toHaveLength(0)
+    const live: SessionSummary = { ...summarizeSession(header, []), lastSeq: 2, activities: [] }
+    expect(appendActivity(live, stepStart(1, '2026-08-01T01:00:00Z'))).toBe(false)
+  })
+
+  it('filters calls by model, provider, and token thresholds with stable keys', () => {
+    const summary = summarizeSession(header, [stepStart(1, '2026-08-01T01:00:00Z'), requestHeader(2, 'medium'), timedAssistant(3, '2026-08-01T01:00:12Z')])
+    const query = { from: '2026-08-01', to: '2026-08-02', timeZone: 'UTC', scope: 'all' as const, model: 'deepseek-chat', provider: 'deepseek', minInputTokens: 500, minOutputTokens: 100, page: 1, pageSize: 50 }
+    const result = aggregateCalls([summary], query)
+    expect(result.total).toBe(1)
+    expect(result.items[0]?.key).toBe(`${summary.id}:3`)
+    expect(result.items[0]?.durationMs).toBe(12_000)
+    expect(result.items[0]?.effort).toBe('medium')
+    const filtered = aggregateCalls([summary], { ...query, minInputTokens: 5000 })
+    expect(filtered.total).toBe(0)
   })
 })
