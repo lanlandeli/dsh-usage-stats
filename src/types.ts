@@ -15,6 +15,10 @@ export interface ActivityRecord {
   provider?: string
   model?: string
   tokens?: TokenBreakdown
+  /** step/start → assistant/message wall time in ms; absent for history without a paired start. */
+  durationMs?: number
+  /** Effective reasoning effort from the nearest request/header; absent when none was recorded. */
+  effort?: string
 }
 
 export interface SessionSummary {
@@ -39,6 +43,43 @@ export interface StatsQuery {
   timeZone: string
   workspace?: string
   scope: TaskScope
+}
+
+/** Query filters for the per-call detail endpoint (`/calls`). */
+export interface CallsQuery extends StatsQuery {
+  /** Exact model filter; absent means no filter. */
+  model: string | undefined
+  /** Exact provider route filter; absent means no filter. */
+  provider: string | undefined
+  /** Keep only calls whose billed input tokens are at least this value. */
+  minInputTokens: number | undefined
+  /** Keep only calls whose output tokens are at least this value. */
+  minOutputTokens: number | undefined
+  page: number
+  pageSize: number
+}
+
+/** One assistant call row served by `/calls`. */
+export interface CallRecord {
+  key: string
+  seq: number
+  time: number
+  sessionId: string
+  provider: string
+  model: string
+  effort: string | null
+  durationMs: number | null
+  tokens: TokenBreakdown
+}
+
+/** Paginated payload served by `/calls`. */
+export interface CallsPage {
+  indexReady: boolean
+  items: CallRecord[]
+  page: number
+  pageSize: number
+  total: number
+  hasMore: boolean
 }
 
 export interface ModelStats extends TokenBreakdown {

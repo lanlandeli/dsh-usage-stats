@@ -3,6 +3,19 @@
 All notable changes are documented here. This project follows Semantic
 Versioning while DeepSeek Harness remains in developer preview.
 
+## [Unreleased]
+
+### Added
+
+- Added a "Call Details" panel to the dashboard: a paginated per-call list
+  showing wall-clock duration, input/output tokens, cache hit rate, model,
+  and reasoning effort for every assistant call.
+- Added the `GET /usage-stats/v1/calls` endpoint with date, scope, workspace,
+  model, provider, input/output token-threshold, and pagination filters.
+- Collected `durationMs` (step/start → assistant/message) and `effort`
+  (request/header reasoning effort) per call, keyed per session so concurrent
+  sessions never bleed timing into each other.
+
 ## [0.1.15] - 2026-08-15
 
 ### Added

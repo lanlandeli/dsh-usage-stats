@@ -6,8 +6,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import type { StatsSnapshot, TaskScope } from '../types.js'
-import { formatDateLabel, installLocale, useLocale } from './i18n.js'
+import type { CallRecord, CallsPage, StatsSnapshot, TaskScope } from '../types.js'
+import { formatDateLabel, installLocale, useLocale, type I18nKey } from './i18n.js'
 import { styles } from './styles.js'
 
 export const inject = ['slots', 'locale']
@@ -160,6 +160,83 @@ function Breakdown({ snapshot }: { snapshot: StatsSnapshot }): ReactNode {
   return <section className="us-panel"><div className="us-panel-head"><span className="us-panel-title">{t('tokenComposition')}</span></div><div className="us-breakdown">{rows.map(([label,value]) => <div className="us-break-item" key={label}><span>{label}</span><strong>{compact(value, numberLocale)}</strong></div>)}</div></section>
 }
 
+function formatCallTime(value: number): string {
+  const d = new Date(value)
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mi = String(d.getMinutes()).padStart(2, '0')
+  return `${mm}-${dd} ${hh}:${mi}`
+}
+
+function formatCallTokens(n: number, numberLocale: string): string {
+  if (n < 1_000) return `${n} token`
+  return `${new Intl.NumberFormat(numberLocale, { maximumFractionDigits: 1 }).format(n / 1_000)}k token`
+}
+
+function formatCallDuration(ms: number | null, t: (key: I18nKey) => string): string {
+  if (ms === null || ms === undefined) return '—'
+  if (ms < 1_000) return t('durationSubSecond')
+  const s = ms / 1_000
+  if (s < 60) return `${Math.round(s * 10) / 10}s`
+  const m = Math.floor(s / 60)
+  return `${m}m${Math.round(s % 60)}s`
+}
+
+function callCachePercent(tokens: CallRecord['tokens'], t: (key: I18nKey, vars?: Record<string, string | number>) => string): string {
+  const denominator = tokens.input + tokens.cacheRead + tokens.cacheWrite
+  return denominator === 0 ? '—' : t('cacheRate', { percent: Math.round(tokens.cacheRead / denominator * 100) })
+}
+
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50]
+
+function CallsPanel({ snapshot, scope, workspace, days }: { snapshot: StatsSnapshot; scope: TaskScope; workspace: string; days: number }): ReactNode {
+  const { t, numberLocale } = useLocale()
+  const [page, setPage] = useState(1)
+  const [model, setModel] = useState('')
+  const [provider, setProvider] = useState('')
+  const [minInput, setMinInput] = useState('')
+  const [minOutput, setMinOutput] = useState('')
+  const [pageSize, setPageSize] = useState(50)
+  const [data, setData] = useState<CallsPage | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const range = useMemo(() => ({ from: localDate(-(days - 1)), to: localDate() }), [days])
+  const query = useMemo(() => {
+    const params = new URLSearchParams({ ...range, scope, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', page: String(page), pageSize: String(pageSize) })
+    if (workspace) params.set('workspace', workspace)
+    if (model) params.set('model', model)
+    if (provider) params.set('provider', provider)
+    if (minInput !== '') params.set('minInputTokens', minInput)
+    if (minOutput !== '') params.set('minOutputTokens', minOutput)
+    return params
+  }, [range, scope, workspace, page, pageSize, model, provider, minInput, minOutput])
+  useEffect(() => { setPage(1) }, [scope, workspace, days])
+  useEffect(() => {
+    const abort = new AbortController()
+    setError(null)
+    fetch(`/usage-stats/v1/calls?${query}`, { signal: abort.signal, headers: { accept: 'application/json' } })
+      .then(async response => { if (!response.ok) throw new Error((await response.json() as { error?: string }).error ?? `HTTP ${response.status}`); return response.json() as Promise<CallsPage> })
+      .then(setData).catch((reason: unknown) => { if ((reason as { name?: string }).name !== 'AbortError') setError(reason instanceof Error ? reason.message : String(reason)) })
+    return () => { abort.abort() }
+  }, [query])
+  const modelOptions = useMemo(() => ['', ...new Set((snapshot.models ?? []).map(item => item.model))], [snapshot.models])
+  const providerOptions = useMemo(() => ['', ...new Set((snapshot.models ?? []).map(item => item.provider))], [snapshot.models])
+  const pageCount = data === null ? 1 : Math.max(1, Math.ceil(data.total / pageSize))
+  const content: ReactNode = error ? <div className="us-state"><div><p>{t('callsLoadError')}</p><small>{error}</small></div></div>
+    : data === null ? <div className="us-state"><div><div className="us-spinner" />{t('callsLoading')}</div></div>
+    : !data.indexReady ? <div className="us-state">{t('callsIndexing')}</div>
+    : data.items.length === 0 ? <div className="us-state">{t('callsEmpty')}</div>
+    : <div className="us-calls-wrap"><table className="us-calls-table"><thead><tr><th>{t('colTime')}</th><th>{t('colDuration')}</th><th>{t('colInput')}</th><th>{t('colOutput')}</th><th>{t('colCacheRate')}</th><th>{t('colModel')}</th><th>{t('colEffort')}</th></tr></thead><tbody>{data.items.map(item => <tr key={item.key}><td className="us-calls-time">{formatCallTime(item.time)}</td><td>{formatCallDuration(item.durationMs, t)}</td><td>{formatCallTokens(item.tokens.input, numberLocale)}</td><td>{formatCallTokens(item.tokens.output, numberLocale)}</td><td>{callCachePercent(item.tokens, t)}</td><td className="us-calls-model" title={`${item.provider}/${item.model}`}>{item.model}</td><td>{item.effort ?? '—'}</td></tr>)}</tbody></table><div className="us-calls-pager"><button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>{t('prevPage')}</button><span>{t('pageInfo', { page, pages: pageCount, total: data.total })}</span><button type="button" disabled={!data.hasMore} onClick={() => setPage(page + 1)}>{t('nextPage')}</button></div></div>
+  return <section className="us-panel"><div className="us-panel-head"><span className="us-panel-title">{t('callsTitle')}</span><span className="us-panel-note">{t('callsNote')}</span></div><div className="us-calls-toolbar">
+    <select className="us-calls-model-select" value={model} aria-label={t('colModel')} onChange={event => { setModel(event.target.value); setPage(1) }}>{modelOptions.map(value => <option key={value} value={value}>{value === '' ? t('allModels') : value}</option>)}</select>
+    <select className="us-calls-model-select" value={provider} aria-label={t('allProviders')} onChange={event => { setProvider(event.target.value); setPage(1) }}>{providerOptions.map(value => <option key={value} value={value}>{value === '' ? t('allProviders') : value}</option>)}</select>
+    <input className="us-calls-number-input" type="text" inputMode="numeric" value={minInput} aria-label={t('minInput')} placeholder={t('minInput')} onChange={event => { setMinInput(event.target.value.replace(/\D/g, '')); setPage(1) }} />
+    <input className="us-calls-number-input" type="text" inputMode="numeric" value={minOutput} aria-label={t('minOutput')} placeholder={t('minOutput')} onChange={event => { setMinOutput(event.target.value.replace(/\D/g, '')); setPage(1) }} />
+    <span className="us-spacer" />
+    <select className="us-calls-model-select us-calls-page-size" value={pageSize} aria-label={t('perPage', { size: pageSize })} onChange={event => { setPageSize(Number(event.target.value)); setPage(1) }}>{PAGE_SIZE_OPTIONS.map(value => <option key={value} value={value}>{t('perPage', { size: value })}</option>)}</select>
+  </div>{content}</section>
+}
+
 function Dashboard({ hide }: { hide: () => void }): ReactNode {
   const { t, numberLocale } = useLocale()
   const [days, setDays] = useState(30)
@@ -205,7 +282,7 @@ function Dashboard({ hide }: { hide: () => void }): ReactNode {
       </div>
       {error ? <div className="us-state"><div><p>{t('loadError')}</p><small>{error}</small></div></div> : snapshot === null ? <div className="us-state"><div><div className="us-spinner" />{t('loading')}</div></div> : <>
         <div className="us-cards"><Card icon="tokens" label={t('tokensUsage')} value={compact(snapshot.allTime.totals.tokens, numberLocale)} detail={t('inputOutputDetail', { input: compact(snapshot.allTime.totals.input, numberLocale), output: compact(snapshot.allTime.totals.output, numberLocale) })} /><Card icon="chat" label={t('sessions')} value={snapshot.allTime.totals.sessions} /><Card icon="message" label={t('messages')} value={snapshot.allTime.totals.messages} /><Card icon="calendar" label={t('activeDays')} value={snapshot.allTime.totals.activeDays} /><Card icon="streak" label={t('streak')} value={snapshot.allTime.totals.currentStreak} />{snapshot.allTime.mostUsedModel ? <Card icon="model" label={t('mostUsedModel')} value={<span style={{ fontSize: '18px' }}>{snapshot.allTime.mostUsedModel.model}</span>} detail={`${snapshot.allTime.mostUsedModel.percent.toFixed(1)}% · ${snapshot.allTime.mostUsedModel.provider}`} /> : <Card icon="model" label={t('mostUsedModel')} value={<span style={{ fontSize: '18px' }}>{t('noData')}</span>} />}</div>
-        <Heatmap snapshot={heatmap ?? snapshot} /><DailyChart snapshot={snapshot} /><ModelUsage snapshot={snapshot} /><Breakdown snapshot={snapshot} />
+        <Heatmap snapshot={heatmap ?? snapshot} /><DailyChart snapshot={snapshot} /><ModelUsage snapshot={snapshot} /><Breakdown snapshot={snapshot} /><CallsPanel snapshot={snapshot} scope={scope} workspace={workspace} days={days} />
       </>}
     </div></main>
   </div>
