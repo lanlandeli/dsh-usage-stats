@@ -32,8 +32,8 @@ export interface SessionSummary {
 }
 
 export interface IndexCache {
-  /** Schema 3 also rebuilds historical calls with response time and effort metadata. */
-  schema: 3
+  /** Schema 4 rebuilds call metadata using persistent request-header snapshots. */
+  schema: 4
   sessions: SessionSummary[]
 }
 
