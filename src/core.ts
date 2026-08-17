@@ -2,6 +2,7 @@ import type { SessionEvent, SessionHeader } from '@deepseek-ai/dsh-session'
 import type {
   ActivityRecord,
   CallRecord,
+  CallsFilter,
   CallsQuery,
   DayStats,
   ModelStats,
@@ -39,6 +40,7 @@ export function activityFromEvent(event: SessionEvent, state: CollectState = new
   }
   if (event.type === 'step/end' || event.type === 'turn/end') {
     state.openStep = null
+    state.currentEffort = undefined
     return null
   }
   if (event.type === 'user/message' && event.data.source.kind === 'user') {
@@ -67,6 +69,7 @@ export function activityFromEvent(event: SessionEvent, state: CollectState = new
   }
   if (durationMs !== undefined) activity.durationMs = durationMs
   if (state.currentEffort !== undefined) activity.effort = state.currentEffort
+  state.currentEffort = undefined
   return activity
 }
 
@@ -95,7 +98,7 @@ export function summarizeSession(header: SessionHeader, events: readonly Session
   return summary
 }
 
-export function appendActivity(summary: SessionSummary, event: SessionEvent, state?: CollectState, indexedAt = Date.now()): boolean {
+export function appendActivity(summary: SessionSummary, event: SessionEvent, indexedAt = Date.now(), state?: CollectState): boolean {
   if (event.seq <= summary.lastSeq) return false
   summary.lastSeq = event.seq
   summary.indexedAt = indexedAt
@@ -270,7 +273,7 @@ export function aggregateStats(sessions: Iterable<SessionSummary>, query: StatsQ
   }
 }
 
-export function aggregateCalls(sessions: Iterable<SessionSummary>, query: CallsQuery): { items: CallRecord[]; total: number } {
+export function collectCalls(sessions: Iterable<SessionSummary>, query: CallsFilter): CallRecord[] {
   const format = formatter(query.timeZone)
   const rows: CallRecord[] = []
   for (const session of sessions) {
@@ -298,6 +301,11 @@ export function aggregateCalls(sessions: Iterable<SessionSummary>, query: CallsQ
     }
   }
   rows.sort((a, b) => b.time - a.time || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+  return rows
+}
+
+export function aggregateCalls(sessions: Iterable<SessionSummary>, query: CallsQuery): { items: CallRecord[]; total: number } {
+  const rows = collectCalls(sessions, query)
   const total = rows.length
   const offset = (query.page - 1) * query.pageSize
   return { items: rows.slice(offset, offset + query.pageSize), total }

@@ -79,7 +79,8 @@ describe('usage statistics core', () => {
 
   it('updates a cached session monotonically and ignores duplicate events', () => {
     const summary: SessionSummary = { id: 's-main', createdAt: 0, lastSeq: -1, indexedAt: 0, activities: [] }
-    expect(appendActivity(summary, human(0, '2026-08-01T01:00:00Z'))).toBe(true)
+    expect(appendActivity(summary, human(0, '2026-08-01T01:00:00Z'), 1234)).toBe(true)
+    expect(summary.indexedAt).toBe(1234)
     expect(appendActivity(summary, human(0, '2026-08-01T01:00:00Z'))).toBe(false)
     expect(summary.activities).toHaveLength(1)
   })
@@ -195,15 +196,27 @@ describe('per-call detail (calls)', () => {
     expect(summary.activities[0]?.effort).toBeUndefined()
   })
 
+  it('does not carry reasoning effort into the next call', () => {
+    const summary = summarizeSession(header, [
+      stepStart(1, '2026-08-01T01:00:00Z'),
+      requestHeader(2, 'medium'),
+      timedAssistant(3, '2026-08-01T01:00:12Z'),
+      stepStart(4, '2026-08-01T01:01:00Z', 1),
+      timedAssistant(5, '2026-08-01T01:01:05Z', 1),
+    ])
+    expect(summary.activities[0]?.effort).toBe('medium')
+    expect(summary.activities[1]?.effort).toBeUndefined()
+  })
+
   it('pairs live events per session without cross-session bleed', () => {
     const summaryA: SessionSummary = { ...summarizeSession(header, []), id: 'A', lastSeq: -1, activities: [] }
     const summaryB: SessionSummary = { ...summarizeSession(header, []), id: 'B', lastSeq: -1, activities: [] }
     const stateA = newCollectState()
     const stateB = newCollectState()
-    expect(appendActivity(summaryA, stepStart(1, '2026-08-01T01:00:00Z'), stateA)).toBe(true)
-    expect(appendActivity(summaryB, stepStart(1, '2026-08-01T02:00:00Z'), stateB)).toBe(true)
-    expect(appendActivity(summaryA, timedAssistant(2, '2026-08-01T01:00:10Z'), stateA)).toBe(true)
-    expect(appendActivity(summaryB, timedAssistant(2, '2026-08-01T02:00:05Z'), stateB)).toBe(true)
+    expect(appendActivity(summaryA, stepStart(1, '2026-08-01T01:00:00Z'), Date.now(), stateA)).toBe(true)
+    expect(appendActivity(summaryB, stepStart(1, '2026-08-01T02:00:00Z'), Date.now(), stateB)).toBe(true)
+    expect(appendActivity(summaryA, timedAssistant(2, '2026-08-01T01:00:10Z'), Date.now(), stateA)).toBe(true)
+    expect(appendActivity(summaryB, timedAssistant(2, '2026-08-01T02:00:05Z'), Date.now(), stateB)).toBe(true)
     expect(summaryA.activities[0]?.durationMs).toBe(10_000)
     expect(summaryB.activities[0]?.durationMs).toBe(5_000)
   })
@@ -225,5 +238,23 @@ describe('per-call detail (calls)', () => {
     expect(result.items[0]?.effort).toBe('medium')
     const filtered = aggregateCalls([summary], { ...query, minInputTokens: 5000 })
     expect(filtered.total).toBe(0)
+  })
+
+  it('paginates calls in stable newest-first order', () => {
+    const summary = summarizeSession(header, [
+      timedAssistant(1, '2026-08-01T01:00:00Z'),
+      timedAssistant(2, '2026-08-01T02:00:00Z'),
+      timedAssistant(3, '2026-08-01T03:00:00Z'),
+    ])
+    const query = {
+      from: '2026-08-01', to: '2026-08-01', timeZone: 'UTC', scope: 'all' as const,
+      model: undefined, provider: undefined, minInputTokens: undefined, minOutputTokens: undefined,
+      page: 1, pageSize: 2,
+    }
+    const first = aggregateCalls([summary], query)
+    const second = aggregateCalls([summary], { ...query, page: 2 })
+    expect(first.total).toBe(3)
+    expect(first.items.map(item => item.seq)).toEqual([3, 2])
+    expect(second.items.map(item => item.seq)).toEqual([1])
   })
 })

@@ -8,13 +8,23 @@ Versioning while DeepSeek Harness remains in developer preview.
 ### Added
 
 - Added a "Call Details" panel to the dashboard: a paginated per-call list
-  showing wall-clock duration, input/output tokens, cache hit rate, model,
+  showing end-to-end response time, input/output tokens, cache hit rate, model,
   and reasoning effort for every assistant call.
 - Added the `GET /usage-stats/v1/calls` endpoint with date, scope, workspace,
   model, provider, input/output token-threshold, and pagination filters.
 - Collected `durationMs` (step/start → assistant/message) and `effort`
   (request/header reasoning effort) per call, keyed per session so concurrent
   sessions never bleed timing into each other.
+
+### Changed
+
+- Rebuild schema-2 caches as schema 3 so historical call timing and reasoning
+  effort are populated instead of remaining blank after upgrade.
+- Reused filtered, time-sorted call results across pages and debounced numeric
+  filters to avoid repeated full-history work during ordinary navigation.
+- Preserved the existing public `appendActivity(summary, event, indexedAt)`
+  signature while accepting collector state as an optional fourth argument.
+- Added responsive wrapping for the call-detail toolbar.
 
 ## [0.1.15] - 2026-08-15
 

@@ -15,7 +15,7 @@ export interface ActivityRecord {
   provider?: string
   model?: string
   tokens?: TokenBreakdown
-  /** step/start → assistant/message wall time in ms; absent for history without a paired start. */
+  /** End-to-end response time from step/start to assistant/message, in ms. */
   durationMs?: number
   /** Effective reasoning effort from the nearest request/header; absent when none was recorded. */
   effort?: string
@@ -32,8 +32,8 @@ export interface SessionSummary {
 }
 
 export interface IndexCache {
-  /** Schema 2 excludes inherited fork prefixes from child summaries. */
-  schema: 2
+  /** Schema 3 also rebuilds historical calls with response time and effort metadata. */
+  schema: 3
   sessions: SessionSummary[]
 }
 
@@ -58,6 +58,8 @@ export interface CallsQuery extends StatsQuery {
   page: number
   pageSize: number
 }
+
+export type CallsFilter = Omit<CallsQuery, 'page' | 'pageSize'>
 
 /** One assistant call row served by `/calls`. */
 export interface CallRecord {
