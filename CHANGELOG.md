@@ -35,6 +35,7 @@ Versioning while DeepSeek Harness remains in developer preview.
 - Balanced call-detail columns with a fixed layout and rounded inset row hover.
 - Kept row corner geometry stable while hover color fades out.
 - Unified all call-detail columns on a shared left-aligned reading edge.
+- Distributed all seven call-detail columns evenly across the available width.
 
 ## [0.1.15] - 2026-08-15
 
