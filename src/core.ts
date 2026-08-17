@@ -40,7 +40,6 @@ export function activityFromEvent(event: SessionEvent, state: CollectState = new
   }
   if (event.type === 'step/end' || event.type === 'turn/end') {
     state.openStep = null
-    state.currentEffort = undefined
     return null
   }
   if (event.type === 'user/message' && event.data.source.kind === 'user') {
@@ -69,7 +68,6 @@ export function activityFromEvent(event: SessionEvent, state: CollectState = new
   }
   if (durationMs !== undefined) activity.durationMs = durationMs
   if (state.currentEffort !== undefined) activity.effort = state.currentEffort
-  state.currentEffort = undefined
   return activity
 }
 

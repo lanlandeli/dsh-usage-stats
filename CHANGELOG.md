@@ -25,6 +25,10 @@ Versioning while DeepSeek Harness remains in developer preview.
 - Preserved the existing public `appendActivity(summary, event, indexedAt)`
   signature while accepting collector state as an optional fourth argument.
 - Added responsive wrapping for the call-detail toolbar.
+- Persisted the latest request-header reasoning effort across subsequent calls,
+  rebuilt existing call indexes, matched call filters to the workspace selector,
+  remembered the selected page size (20 by default), and inherited the Harness
+  font stack throughout the dashboard.
 
 ## [0.1.15] - 2026-08-15
 

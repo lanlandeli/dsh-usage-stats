@@ -196,7 +196,7 @@ describe('per-call detail (calls)', () => {
     expect(summary.activities[0]?.effort).toBeUndefined()
   })
 
-  it('does not carry reasoning effort into the next call', () => {
+  it('keeps the latest reasoning effort until a new request header changes it', () => {
     const summary = summarizeSession(header, [
       stepStart(1, '2026-08-01T01:00:00Z'),
       requestHeader(2, 'medium'),
@@ -205,7 +205,7 @@ describe('per-call detail (calls)', () => {
       timedAssistant(5, '2026-08-01T01:01:05Z', 1),
     ])
     expect(summary.activities[0]?.effort).toBe('medium')
-    expect(summary.activities[1]?.effort).toBeUndefined()
+    expect(summary.activities[1]?.effort).toBe('medium')
   })
 
   it('pairs live events per session without cross-session bleed', () => {

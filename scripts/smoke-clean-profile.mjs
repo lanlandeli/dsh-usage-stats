@@ -52,7 +52,7 @@ try {
   const cachePath = join(cacheDirectory, 'index-v1.json')
   await mkdir(cacheDirectory, { recursive: true })
   await writeFile(cachePath, JSON.stringify({
-    schema: 2,
+    schema: 3,
     sessions: [{
       id: 'polluted-child', createdAt: 1, parentSession: 'parent', lastSeq: 1, indexedAt: 1,
       activities: [{
@@ -111,16 +111,16 @@ try {
     throw new Error('Snapshot schema is incomplete')
   }
   if (snapshot.allTime.totals.tokens !== 0 || snapshot.allTime.totals.sessions !== 0) {
-    throw new Error('Schema-2 cache was not invalidated')
+    throw new Error('Schema-3 cache was not invalidated')
   }
   let rebuiltCache
   for (let attempt = 0; attempt < 50; attempt += 1) {
     rebuiltCache = JSON.parse(await readFile(cachePath, 'utf8'))
-    if (rebuiltCache.schema === 3) break
+    if (rebuiltCache.schema === 4) break
     await new Promise(resolve => setTimeout(resolve, 100))
   }
-  if (rebuiltCache?.schema !== 3 || !Array.isArray(rebuiltCache.sessions) || rebuiltCache.sessions.length !== 0) {
-    throw new Error('Cache was not rebuilt with schema 3')
+  if (rebuiltCache?.schema !== 4 || !Array.isArray(rebuiltCache.sessions) || rebuiltCache.sessions.length !== 0) {
+    throw new Error('Cache was not rebuilt with schema 4')
   }
   const callsResponse = await fetch(`${url}/usage-stats/v1/calls?${query}&page=1&pageSize=50`)
   const calls = await callsResponse.json()
@@ -141,7 +141,7 @@ try {
   if (removed.dependencies?.['dsh-usage-stats'] !== undefined) throw new Error('Plugin dependency survived removal')
   if (removed.dsh?.profile?.bundles?.includes('dsh-usage-stats')) throw new Error('Bundle survived removal')
 
-  console.log('Clean-profile lifecycle verified: pack, install, schema-2 invalidation, compose, boot, API, calls, export, method fence, schema-3 rebuild, remove.')
+  console.log('Clean-profile lifecycle verified: pack, install, schema-3 invalidation, compose, boot, API, calls, export, method fence, schema-4 rebuild, remove.')
 } finally {
   await stopServer()
   await rm(temporary, { recursive: true, force: true })

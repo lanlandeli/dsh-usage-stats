@@ -79,7 +79,7 @@ interface SelectOption {
   label: string
 }
 
-function SelectControl({ label, value, options, onChange }: { label: string; value: string; options: readonly SelectOption[]; onChange: (value: string) => void }): ReactNode {
+function SelectControl({ label, value, options, onChange, className = '' }: { label: string; value: string; options: readonly SelectOption[]; onChange: (value: string) => void; className?: string }): ReactNode {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const selected = options.find(option => option.value === value) ?? options[0]
@@ -99,7 +99,7 @@ function SelectControl({ label, value, options, onChange }: { label: string; val
     const option = options[next]
     if (option !== undefined) onChange(option.value)
   }
-  return <div className="us-select" ref={root} data-open={open || undefined}>
+  return <div className={`us-select ${className}`.trim()} ref={root} data-open={open || undefined}>
     <button type="button" className="us-select-trigger" aria-label={label} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(current => !current)} onKeyDown={onKeyDown}><span>{selected?.label ?? ''}</span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="m4.5 6.5 3.5 3 3.5-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
     {open && <div className="us-select-menu" role="listbox" aria-label={label}>{options.map(option => <button type="button" role="option" aria-selected={option.value === value} key={option.value} onClick={() => { onChange(option.value); setOpen(false) }}>{option.label}</button>)}</div>}
   </div>
@@ -189,6 +189,17 @@ function callCachePercent(tokens: CallRecord['tokens'], t: (key: I18nKey, vars?:
 }
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50]
+const PAGE_SIZE_STORAGE_KEY = 'dsh-usage-stats:calls-page-size'
+
+function initialPageSize(): number {
+  if (typeof window === 'undefined') return 20
+  try {
+    const saved = Number(window.localStorage.getItem(PAGE_SIZE_STORAGE_KEY))
+    return PAGE_SIZE_OPTIONS.includes(saved) ? saved : 20
+  } catch {
+    return 20
+  }
+}
 
 function CallsPanel({ snapshot, scope, workspace, days }: { snapshot: StatsSnapshot; scope: TaskScope; workspace: string; days: number }): ReactNode {
   const { t, numberLocale } = useLocale()
@@ -199,7 +210,7 @@ function CallsPanel({ snapshot, scope, workspace, days }: { snapshot: StatsSnaps
   const [minOutput, setMinOutput] = useState('')
   const [debouncedMinInput, setDebouncedMinInput] = useState('')
   const [debouncedMinOutput, setDebouncedMinOutput] = useState('')
-  const [pageSize, setPageSize] = useState(50)
+  const [pageSize, setPageSize] = useState(initialPageSize)
   const [data, setData] = useState<CallsPage | null>(null)
   const [error, setError] = useState<string | null>(null)
   const range = useMemo(() => ({ from: localDate(-(days - 1)), to: localDate() }), [days])
@@ -218,6 +229,9 @@ function CallsPanel({ snapshot, scope, workspace, days }: { snapshot: StatsSnaps
     return () => { window.clearTimeout(timer) }
   }, [minInput, minOutput])
   useEffect(() => {
+    try { window.localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(pageSize)) } catch { /* Storage may be disabled. */ }
+  }, [pageSize])
+  useEffect(() => {
     const abort = new AbortController()
     setError(null)
     fetch(`/usage-stats/v1/calls?${query}`, { signal: abort.signal, headers: { accept: 'application/json' } })
@@ -234,12 +248,12 @@ function CallsPanel({ snapshot, scope, workspace, days }: { snapshot: StatsSnaps
     : data.items.length === 0 ? <div className="us-state">{t('callsEmpty')}</div>
     : <div className="us-calls-wrap"><table className="us-calls-table"><thead><tr><th>{t('colTime')}</th><th>{t('colDuration')}</th><th>{t('colInput')}</th><th>{t('colOutput')}</th><th>{t('colCacheRate')}</th><th>{t('colModel')}</th><th>{t('colEffort')}</th></tr></thead><tbody>{data.items.map(item => <tr key={item.key}><td className="us-calls-time">{formatCallTime(item.time)}</td><td>{formatCallDuration(item.durationMs, t)}</td><td>{formatCallTokens(item.tokens.input, numberLocale)}</td><td>{formatCallTokens(item.tokens.output, numberLocale)}</td><td>{callCachePercent(item.tokens, t)}</td><td className="us-calls-model" title={`${item.provider}/${item.model}`}>{item.model}</td><td>{item.effort ?? '—'}</td></tr>)}</tbody></table><div className="us-calls-pager"><button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>{t('prevPage')}</button><span>{t('pageInfo', { page, pages: pageCount, total: data.total })}</span><button type="button" disabled={!data.hasMore} onClick={() => setPage(page + 1)}>{t('nextPage')}</button></div></div>
   return <section className="us-panel"><div className="us-panel-head"><span className="us-panel-title">{t('callsTitle')}</span><span className="us-panel-note">{t('callsNote')}</span></div><div className="us-calls-toolbar">
-    <select className="us-calls-model-select" value={model} aria-label={t('colModel')} onChange={event => { setModel(event.target.value); setPage(1) }}>{modelOptions.map(value => <option key={value} value={value}>{value === '' ? t('allModels') : value}</option>)}</select>
-    <select className="us-calls-model-select" value={provider} aria-label={t('allProviders')} onChange={event => { setProvider(event.target.value); setPage(1) }}>{providerOptions.map(value => <option key={value} value={value}>{value === '' ? t('allProviders') : value}</option>)}</select>
+    <SelectControl className="us-calls-select" label={t('colModel')} value={model} options={modelOptions.map(value => ({ value, label: value === '' ? t('allModels') : value }))} onChange={value => { setModel(value); setPage(1) }} />
+    <SelectControl className="us-calls-select" label={t('allProviders')} value={provider} options={providerOptions.map(value => ({ value, label: value === '' ? t('allProviders') : value }))} onChange={value => { setProvider(value); setPage(1) }} />
     <input className="us-calls-number-input" type="text" inputMode="numeric" value={minInput} aria-label={t('minInput')} placeholder={t('minInput')} onChange={event => { setMinInput(event.target.value.replace(/\D/g, '')); setPage(1) }} />
     <input className="us-calls-number-input" type="text" inputMode="numeric" value={minOutput} aria-label={t('minOutput')} placeholder={t('minOutput')} onChange={event => { setMinOutput(event.target.value.replace(/\D/g, '')); setPage(1) }} />
     <span className="us-spacer" />
-    <select className="us-calls-model-select us-calls-page-size" value={pageSize} aria-label={t('perPage', { size: pageSize })} onChange={event => { setPageSize(Number(event.target.value)); setPage(1) }}>{PAGE_SIZE_OPTIONS.map(value => <option key={value} value={value}>{t('perPage', { size: value })}</option>)}</select>
+    <SelectControl className="us-calls-select us-calls-page-size" label={t('perPage', { size: pageSize })} value={String(pageSize)} options={PAGE_SIZE_OPTIONS.map(value => ({ value: String(value), label: t('perPage', { size: value }) }))} onChange={value => { setPageSize(Number(value)); setPage(1) }} />
   </div>{content}</section>
 }
 
