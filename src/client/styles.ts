@@ -156,7 +156,7 @@ body[data-ds-dark-theme] .us-cell[data-level="5"] { background: #67b7ff; }
 @media (max-width: 480px) { .us-cards { grid-template-columns: 1fr; } .us-toolbar { align-items: stretch; } .us-field, .us-select { max-width:none; flex:1; } }
 @media (prefers-reduced-motion: reduce) { .us-shell, .us-spinner, .us-bar-segment, .us-card, .us-panel, .us-floating-tip, .us-chart-tip { animation: none; transition: none; } }
 .us-calls-wrap { overflow-x: auto; }
-.us-calls-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.us-calls-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
 .us-calls-model-select { height: 34px; min-width: 180px; padding: 0 30px 0 11px; border: 1px solid var(--us-border); border-radius: 10px; color: var(--us-text); background: var(--us-raised); font: inherit; cursor: pointer; }
 .us-calls-model-select:focus { border-color: color-mix(in srgb, var(--us-accent) 58%, var(--us-border)); outline: none; }
 .us-calls-number-input { height: 34px; width: 96px; padding: 0 10px; border: 1px solid var(--us-border); border-radius: 10px; color: var(--us-text); background: var(--us-raised); font: inherit; }
@@ -171,4 +171,14 @@ body[data-ds-dark-theme] .us-cell[data-level="5"] { background: #67b7ff; }
 .us-calls-pager { display: flex; align-items: center; gap: 12px; justify-content: flex-end; margin-top: 12px; color: var(--us-muted); font-size: 12px; }
 .us-calls-pager button { height: 28px; padding: 0 12px; border: 1px solid var(--us-border); border-radius: 8px; color: var(--us-text); background: var(--us-raised); cursor: pointer; font: inherit; }
 .us-calls-pager button:disabled { opacity: .45; cursor: default; }
+@media (max-width: 760px) {
+  .us-calls-toolbar .us-spacer { display: none; }
+  .us-calls-model-select { flex: 1 1 180px; min-width: 0; }
+  .us-calls-number-input { flex: 1 1 120px; width: auto; min-width: 0; }
+  .us-calls-page-size { flex: 1 1 130px; }
+}
+@media (max-width: 480px) {
+  .us-calls-model-select, .us-calls-number-input, .us-calls-page-size { flex-basis: 100%; width: 100%; }
+  .us-calls-pager { justify-content: space-between; }
+}
 `

@@ -52,7 +52,7 @@ try {
   const cachePath = join(cacheDirectory, 'index-v1.json')
   await mkdir(cacheDirectory, { recursive: true })
   await writeFile(cachePath, JSON.stringify({
-    schema: 1,
+    schema: 2,
     sessions: [{
       id: 'polluted-child', createdAt: 1, parentSession: 'parent', lastSeq: 1, indexedAt: 1,
       activities: [{
@@ -111,16 +111,21 @@ try {
     throw new Error('Snapshot schema is incomplete')
   }
   if (snapshot.allTime.totals.tokens !== 0 || snapshot.allTime.totals.sessions !== 0) {
-    throw new Error('Schema-1 cache was not invalidated')
+    throw new Error('Schema-2 cache was not invalidated')
   }
   let rebuiltCache
   for (let attempt = 0; attempt < 50; attempt += 1) {
     rebuiltCache = JSON.parse(await readFile(cachePath, 'utf8'))
-    if (rebuiltCache.schema === 2) break
+    if (rebuiltCache.schema === 3) break
     await new Promise(resolve => setTimeout(resolve, 100))
   }
-  if (rebuiltCache?.schema !== 2 || !Array.isArray(rebuiltCache.sessions) || rebuiltCache.sessions.length !== 0) {
-    throw new Error('Cache was not rebuilt with schema 2')
+  if (rebuiltCache?.schema !== 3 || !Array.isArray(rebuiltCache.sessions) || rebuiltCache.sessions.length !== 0) {
+    throw new Error('Cache was not rebuilt with schema 3')
+  }
+  const callsResponse = await fetch(`${url}/usage-stats/v1/calls?${query}&page=1&pageSize=50`)
+  const calls = await callsResponse.json()
+  if (!callsResponse.ok || calls.indexReady !== true || !Array.isArray(calls.items) || calls.total !== 0) {
+    throw new Error('Calls endpoint contract failed')
   }
   const headResponse = await fetch(`${url}/usage-stats/v1/snapshot?${query}`, { method: 'HEAD' })
   if (!headResponse.ok || (await headResponse.text()) !== '') throw new Error('HEAD contract failed')
@@ -136,7 +141,7 @@ try {
   if (removed.dependencies?.['dsh-usage-stats'] !== undefined) throw new Error('Plugin dependency survived removal')
   if (removed.dsh?.profile?.bundles?.includes('dsh-usage-stats')) throw new Error('Bundle survived removal')
 
-  console.log('Clean-profile lifecycle verified: pack, install, schema-1 invalidation, compose, boot, API, export, method fence, schema-2 rebuild, remove.')
+  console.log('Clean-profile lifecycle verified: pack, install, schema-2 invalidation, compose, boot, API, calls, export, method fence, schema-3 rebuild, remove.')
 } finally {
   await stopServer()
   await rm(temporary, { recursive: true, force: true })

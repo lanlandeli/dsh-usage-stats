@@ -55,7 +55,7 @@ dsh plugin --profile web remove dsh-usage-stats
 | **Daily trends** | Recent 7-day or 30-day token usage with per-model hover details |
 | **Activity heatmap** | One year of activity levels with daily token and call details |
 | **Scope filters** | Filter by workspace, main task, or subtask |
-| **Call details** | Paginated per-call list with real duration, input/output tokens, cache hit rate, model, and reasoning effort; filter by model/provider/token threshold and switch page size |
+| **Call details** | Paginated per-call list with response time, input/output tokens, cache hit rate, model, and reasoning effort; filter by model/provider/token threshold and switch page size |
 | **Data export** | Export CSV or JSON for archival or further analysis |
 | **Chinese and English UI** | Follow the Harness language setting automatically |
 | **Theme support** | Follow the Harness light or dark theme automatically |

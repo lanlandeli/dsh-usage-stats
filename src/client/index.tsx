@@ -197,6 +197,8 @@ function CallsPanel({ snapshot, scope, workspace, days }: { snapshot: StatsSnaps
   const [provider, setProvider] = useState('')
   const [minInput, setMinInput] = useState('')
   const [minOutput, setMinOutput] = useState('')
+  const [debouncedMinInput, setDebouncedMinInput] = useState('')
+  const [debouncedMinOutput, setDebouncedMinOutput] = useState('')
   const [pageSize, setPageSize] = useState(50)
   const [data, setData] = useState<CallsPage | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -206,11 +208,15 @@ function CallsPanel({ snapshot, scope, workspace, days }: { snapshot: StatsSnaps
     if (workspace) params.set('workspace', workspace)
     if (model) params.set('model', model)
     if (provider) params.set('provider', provider)
-    if (minInput !== '') params.set('minInputTokens', minInput)
-    if (minOutput !== '') params.set('minOutputTokens', minOutput)
+    if (debouncedMinInput !== '') params.set('minInputTokens', debouncedMinInput)
+    if (debouncedMinOutput !== '') params.set('minOutputTokens', debouncedMinOutput)
     return params
-  }, [range, scope, workspace, page, pageSize, model, provider, minInput, minOutput])
+  }, [range, scope, workspace, page, pageSize, model, provider, debouncedMinInput, debouncedMinOutput])
   useEffect(() => { setPage(1) }, [scope, workspace, days])
+  useEffect(() => {
+    const timer = window.setTimeout(() => { setDebouncedMinInput(minInput); setDebouncedMinOutput(minOutput) }, 250)
+    return () => { window.clearTimeout(timer) }
+  }, [minInput, minOutput])
   useEffect(() => {
     const abort = new AbortController()
     setError(null)
