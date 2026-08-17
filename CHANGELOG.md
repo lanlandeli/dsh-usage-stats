@@ -32,6 +32,7 @@ Versioning while DeepSeek Harness remains in developer preview.
 - Refined call details with aligned numeric columns, localized effort labels,
   sticky headers, exact-value hints, token-suffixed filters, contextual reset,
   and compact range pagination.
+- Balanced call-detail columns with a fixed layout and rounded inset row hover.
 
 ## [0.1.15] - 2026-08-15
 
