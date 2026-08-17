@@ -89,6 +89,7 @@ try {
   await mkdir(packageDir, { recursive: true })
   await mkdir(join(dshHome, 'usage-stats'), { recursive: true })
   await writeFile(join(dshHome, 'usage-stats', 'index-v1.json'), JSON.stringify({ schema: 4, sessions: sampleSessions() }), 'utf8')
+  await runNode(npmCli, ['run', 'build'])
   const packed = await runNode(npmCli, ['pack', '--json', '--ignore-scripts', '--pack-destination', packageDir])
   const filename = JSON.parse(packed.stdout)[0]?.filename
   if (!filename) throw new Error('npm pack did not return a filename')

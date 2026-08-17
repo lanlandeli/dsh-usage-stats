@@ -91,7 +91,7 @@ const report = await evaluate(`(() => {
   }
 })()`)
 
-if (report.cards !== 6 || report.dateInputs !== 0 || report.selects !== 6 || report.zeroHitTargets !== 0 || report.callRows !== 20 || !report.retentionLabel?.includes('1,000')) {
+if (report.cards !== 6 || report.dateInputs !== 0 || report.selects !== 6 || report.zeroHitTargets !== 0 || report.callRows !== 5 || !report.retentionLabel?.includes('1,000')) {
   throw new Error(`UI contract failed: ${JSON.stringify(report)}`)
 }
 
@@ -116,10 +116,44 @@ if (screenshotDir) {
   await send('Emulation.setDeviceMetricsOverride', { width: 960, height: 600, deviceScaleFactor: 1, mobile: false })
   await evaluate(`document.body.removeAttribute('data-ds-dark-theme'); document.querySelector('.us-scroll').scrollTop = 0`)
   await new Promise(resolvePromise => setTimeout(resolvePromise, 450))
+  await evaluate(`(() => {
+    const pointer = document.createElement('div')
+    pointer.id = 'us-demo-pointer'
+    pointer.innerHTML = '<svg viewBox="0 0 24 28" aria-hidden="true"><path d="M3 2.5v19l5.1-4.8 3.7 8.3 3.3-1.5-3.7-8.1 7-.2z" fill="white" stroke="#18202a" stroke-width="1.6" stroke-linejoin="round"/></svg>'
+    pointer.style.cssText = 'position:fixed;left:0;top:0;width:22px;height:26px;z-index:9999;pointer-events:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.22));transform:translate(-40px,-40px)'
+    document.body.append(pointer)
+  })()`)
   const frames = []
   const delays = []
   const addFrame = async delay => { frames.push(await capture(undefined, false)); delays.push(delay) }
+  let pointerX = 900
+  let pointerY = 70
+  const hidePointer = async () => {
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 2, y: 2 })
+    await evaluate(`document.querySelector('#us-demo-pointer').style.transform = 'translate(-40px,-40px)'`)
+  }
+  const hover = async selector => {
+    const point = await evaluate(`(() => {
+      const target = document.querySelector(${JSON.stringify(selector)})
+      if (!target) return null
+      const rect = target.getBoundingClientRect()
+      return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) }
+    })()`)
+    if (!point) throw new Error(`Unable to hover ${selector}`)
+    const startX = pointerX
+    const startY = pointerY
+    for (let step = 1; step <= 4; step += 1) {
+      pointerX = Math.round(startX + (point.x - startX) * step / 4)
+      pointerY = Math.round(startY + (point.y - startY) * step / 4)
+      await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: pointerX, y: pointerY })
+      await evaluate(`document.querySelector('#us-demo-pointer').style.transform = 'translate(${pointerX}px,${pointerY}px)'`)
+      await new Promise(resolvePromise => setTimeout(resolvePromise, 65))
+      await addFrame(80)
+    }
+    await new Promise(resolvePromise => setTimeout(resolvePromise, 160))
+  }
   const scrollTo = async (target, steps) => {
+    await hidePointer()
     const start = await evaluate(`document.querySelector('.us-scroll').scrollTop`)
     for (let step = 1; step <= steps; step += 1) {
       const eased = 1 - Math.pow(1 - step / steps, 3)
@@ -130,13 +164,18 @@ if (screenshotDir) {
     }
   }
   await addFrame(900)
+  const heatTop = await evaluate(`Math.max(0, document.querySelector('.us-heat-panel').offsetTop - 18)`)
+  await scrollTo(heatTop, 3)
+  await hover('.us-cell-tip[data-level="5"]')
+  await addFrame(950)
   const trendTop = await evaluate(`Math.max(0, document.querySelector('.us-trend').offsetTop - 18)`)
   await scrollTo(trendTop, 6)
-  await addFrame(700)
+  await hover('.us-bar-hit')
+  await addFrame(1050)
   const callsTop = await evaluate(`Math.max(0, document.querySelector('.us-calls-table').closest('.us-panel').offsetTop - 18)`)
   await scrollTo(callsTop, 9)
-  await evaluate(`document.querySelector('.us-calls-table tbody tr')?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))`)
-  await addFrame(900)
+  await hover('.us-calls-table tbody tr')
+  await addFrame(850)
   await scrollTo(0, 8)
   await addFrame(1100)
   await sharp(frames, { join: { animated: true } }).gif({ loop: 0, delay: delays, colours: 128, dither: 0.7, effort: 8 }).toFile(resolve(screenshotDir, 'usage-demo.gif'))

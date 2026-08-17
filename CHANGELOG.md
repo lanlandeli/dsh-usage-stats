@@ -11,6 +11,9 @@ Versioning while DeepSeek Harness remains in developer preview.
   current call-detail interface with anonymous example data.
 - Added a repeatable isolated capture workflow for keeping README media in sync
   with future dashboard updates.
+- Reduced the default call-detail page size to five rows while preserving each
+  user's most recent selection, and added heatmap, chart, and row hover moments
+  to the demo animation.
 
 ## [0.1.16] - 2026-08-17
 

@@ -209,12 +209,12 @@ const MAX_RECORD_OPTIONS = [100, 500, 1_000, 2_000, 5_000, 10_000]
 const MAX_RECORD_STORAGE_KEY = 'dsh-usage-stats:calls-max-records'
 
 function initialPageSize(): number {
-  if (typeof window === 'undefined') return 20
+  if (typeof window === 'undefined') return 5
   try {
     const saved = Number(window.localStorage.getItem(PAGE_SIZE_STORAGE_KEY))
-    return PAGE_SIZE_OPTIONS.includes(saved) ? saved : 20
+    return PAGE_SIZE_OPTIONS.includes(saved) ? saved : 5
   } catch {
-    return 20
+    return 5
   }
 }
 
