@@ -174,6 +174,14 @@ function formatCallTokens(n: number, numberLocale: string): string {
   return `${new Intl.NumberFormat(numberLocale, { maximumFractionDigits: 1 }).format(n / 1_000)}k token`
 }
 
+function formatExactTokens(n: number, numberLocale: string): string {
+  return `${new Intl.NumberFormat(numberLocale).format(n)} tokens`
+}
+
+function formatExactTime(value: number, numberLocale: string): string {
+  return new Intl.DateTimeFormat(numberLocale, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(value)
+}
+
 function formatCallDuration(ms: number | null, t: (key: I18nKey) => string): string {
   if (ms === null || ms === undefined) return '—'
   if (ms < 1_000) return t('durationSubSecond')
@@ -186,6 +194,13 @@ function formatCallDuration(ms: number | null, t: (key: I18nKey) => string): str
 function callCachePercent(tokens: CallRecord['tokens'], t: (key: I18nKey, vars?: Record<string, string | number>) => string): string {
   const denominator = tokens.input + tokens.cacheRead + tokens.cacheWrite
   return denominator === 0 ? '—' : t('cacheRate', { percent: Math.round(tokens.cacheRead / denominator * 100) })
+}
+
+function formatEffort(value: string | null, t: (key: I18nKey) => string): string {
+  if (value === null || value === '') return t('notRecorded')
+  const labels: Partial<Record<string, I18nKey>> = { max: 'effortMax', high: 'effortHigh', medium: 'effortMedium', low: 'effortLow' }
+  const key = labels[value.toLowerCase()]
+  return key === undefined ? value : t(key)
 }
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50]
@@ -241,17 +256,21 @@ function CallsPanel({ snapshot, scope, workspace, days }: { snapshot: StatsSnaps
   }, [query])
   const modelOptions = useMemo(() => ['', ...new Set((snapshot.models ?? []).map(item => item.model))], [snapshot.models])
   const providerOptions = useMemo(() => ['', ...new Set((snapshot.models ?? []).map(item => item.provider))], [snapshot.models])
-  const pageCount = data === null ? 1 : Math.max(1, Math.ceil(data.total / pageSize))
+  const hasFilters = model !== '' || provider !== '' || minInput !== '' || minOutput !== ''
+  const clearFilters = (): void => {
+    setModel(''); setProvider(''); setMinInput(''); setMinOutput(''); setDebouncedMinInput(''); setDebouncedMinOutput(''); setPage(1)
+  }
   const content: ReactNode = error ? <div className="us-state"><div><p>{t('callsLoadError')}</p><small>{error}</small></div></div>
     : data === null ? <div className="us-state"><div><div className="us-spinner" />{t('callsLoading')}</div></div>
     : !data.indexReady ? <div className="us-state">{t('callsIndexing')}</div>
     : data.items.length === 0 ? <div className="us-state">{t('callsEmpty')}</div>
-    : <div className="us-calls-wrap"><table className="us-calls-table"><thead><tr><th>{t('colTime')}</th><th>{t('colDuration')}</th><th>{t('colInput')}</th><th>{t('colOutput')}</th><th>{t('colCacheRate')}</th><th>{t('colModel')}</th><th>{t('colEffort')}</th></tr></thead><tbody>{data.items.map(item => <tr key={item.key}><td className="us-calls-time">{formatCallTime(item.time)}</td><td>{formatCallDuration(item.durationMs, t)}</td><td>{formatCallTokens(item.tokens.input, numberLocale)}</td><td>{formatCallTokens(item.tokens.output, numberLocale)}</td><td>{callCachePercent(item.tokens, t)}</td><td className="us-calls-model" title={`${item.provider}/${item.model}`}>{item.model}</td><td>{item.effort ?? '—'}</td></tr>)}</tbody></table><div className="us-calls-pager"><button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>{t('prevPage')}</button><span>{t('pageInfo', { page, pages: pageCount, total: data.total })}</span><button type="button" disabled={!data.hasMore} onClick={() => setPage(page + 1)}>{t('nextPage')}</button></div></div>
+    : <div className="us-calls-wrap"><table className="us-calls-table" aria-label={t('callsTitle')}><thead><tr><th>{t('colTime')}</th><th className="us-number">{t('colDuration')}</th><th className="us-number">{t('colInput')}</th><th className="us-number">{t('colOutput')}</th><th className="us-number">{t('colCacheRate')}</th><th>{t('colModel')}</th><th>{t('colEffort')}</th></tr></thead><tbody>{data.items.map(item => <tr key={item.key}><td className="us-calls-time" title={formatExactTime(item.time, numberLocale)}>{formatCallTime(item.time)}</td><td className="us-number">{formatCallDuration(item.durationMs, t)}</td><td className="us-number" title={formatExactTokens(item.tokens.input, numberLocale)}>{formatCallTokens(item.tokens.input, numberLocale)}</td><td className="us-number" title={formatExactTokens(item.tokens.output, numberLocale)}>{formatCallTokens(item.tokens.output, numberLocale)}</td><td className="us-number">{callCachePercent(item.tokens, t)}</td><td className="us-calls-model" title={`${item.provider}/${item.model}`}>{item.model}</td><td className={item.effort === null ? 'us-calls-effort is-empty' : 'us-calls-effort'}>{formatEffort(item.effort, t)}</td></tr>)}</tbody></table><div className="us-calls-pager"><span>{t('pageInfo', { start: (page - 1) * pageSize + 1, end: Math.min(page * pageSize, data.total), total: data.total })}</span><div className="us-calls-page-buttons"><button type="button" aria-label={t('prevPage')} title={t('prevPage')} disabled={page <= 1} onClick={() => setPage(page - 1)}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m9.5 4-4 4 4 4" /></svg></button><button type="button" aria-label={t('nextPage')} title={t('nextPage')} disabled={!data.hasMore} onClick={() => setPage(page + 1)}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6.5 4 4 4-4 4" /></svg></button></div></div></div>
   return <section className="us-panel"><div className="us-panel-head"><span className="us-panel-title">{t('callsTitle')}</span><span className="us-panel-note">{t('callsNote')}</span></div><div className="us-calls-toolbar">
     <SelectControl className="us-calls-select" label={t('colModel')} value={model} options={modelOptions.map(value => ({ value, label: value === '' ? t('allModels') : value }))} onChange={value => { setModel(value); setPage(1) }} />
     <SelectControl className="us-calls-select" label={t('allProviders')} value={provider} options={providerOptions.map(value => ({ value, label: value === '' ? t('allProviders') : value }))} onChange={value => { setProvider(value); setPage(1) }} />
-    <input className="us-calls-number-input" type="text" inputMode="numeric" value={minInput} aria-label={t('minInput')} placeholder={t('minInput')} onChange={event => { setMinInput(event.target.value.replace(/\D/g, '')); setPage(1) }} />
-    <input className="us-calls-number-input" type="text" inputMode="numeric" value={minOutput} aria-label={t('minOutput')} placeholder={t('minOutput')} onChange={event => { setMinOutput(event.target.value.replace(/\D/g, '')); setPage(1) }} />
+    <label className="us-calls-number-field"><input className="us-calls-number-input" type="text" inputMode="numeric" value={minInput} aria-label={t('minInput')} placeholder={t('minInput')} onChange={event => { setMinInput(event.target.value.replace(/\D/g, '')); setPage(1) }} /><span>{t('tokenUnit')}</span></label>
+    <label className="us-calls-number-field"><input className="us-calls-number-input" type="text" inputMode="numeric" value={minOutput} aria-label={t('minOutput')} placeholder={t('minOutput')} onChange={event => { setMinOutput(event.target.value.replace(/\D/g, '')); setPage(1) }} /><span>{t('tokenUnit')}</span></label>
+    {hasFilters && <button type="button" className="us-calls-clear" onClick={clearFilters}>{t('clearFilters')}</button>}
     <span className="us-spacer" />
     <SelectControl className="us-calls-select us-calls-page-size" label={t('perPage', { size: pageSize })} value={String(pageSize)} options={PAGE_SIZE_OPTIONS.map(value => ({ value: String(value), label: t('perPage', { size: value }) }))} onChange={value => { setPageSize(Number(value)); setPage(1) }} />
   </div>{content}</section>
