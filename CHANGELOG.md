@@ -29,6 +29,9 @@ Versioning while DeepSeek Harness remains in developer preview.
   rebuilt existing call indexes, matched call filters to the workspace selector,
   remembered the selected page size (20 by default), and inherited the Harness
   font stack throughout the dashboard.
+- Refined call details with aligned numeric columns, localized effort labels,
+  sticky headers, exact-value hints, token-suffixed filters, contextual reset,
+  and compact range pagination.
 
 ## [0.1.15] - 2026-08-15
 
