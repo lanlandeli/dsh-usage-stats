@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { readFile } from 'node:fs/promises'
 
 function runNpm(args) {
   const npmCli = process.env.npm_execpath
@@ -15,6 +16,11 @@ function runNpm(args) {
 
 const output = await runNpm(['pack', '--dry-run', '--json', '--ignore-scripts'])
 const report = JSON.parse(output)
+const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
+const bundledOfficialPackages = Object.keys(manifest.dependencies ?? {}).filter(name => name.startsWith('@deepseek-ai/'))
+if (bundledOfficialPackages.length > 0) {
+  throw new Error(`Official Harness packages must be peer dependencies: ${bundledOfficialPackages.join(', ')}`)
+}
 const files = new Set(report[0]?.files?.map(file => file.path) ?? [])
 const required = [
   'package.json', 'README.md', 'README.en.md', 'LICENSE', 'CHANGELOG.md',

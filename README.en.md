@@ -55,13 +55,17 @@ dsh plugin --profile web remove dsh-usage-stats
 | **Daily trends** | Recent 7-day or 30-day token usage with per-model hover details |
 | **Activity heatmap** | One year of activity levels with daily token and call details |
 | **Scope filters** | Filter by workspace, main task, or subtask |
-| **Call details** | Paginated per-call list with response time, input/output tokens, cache hit rate, model, and reasoning effort; filter by model/provider/token threshold and switch page size |
+| **Call details** | Inspect per-call latency, tokens, cache rate, model, and reasoning effort with filters and pagination |
 | **Data export** | Export CSV or JSON for archival or further analysis |
 | **Chinese and English UI** | Follow the Harness language setting automatically |
 | **Theme support** | Follow the Harness light or dark theme automatically |
 | **Lightweight runtime** | No third-party charting library and no background polling |
 
 ## Fixed
+
+### Duplicate official module risk
+
+`0.1.16` declares every DeepSeek Harness package used by the plugin as a peer dependency. This prevents plugin-private copies and split module identity inside a profile. The package check now rejects official modules placed in regular dependencies.
 
 ### Inherited parent context counted as subtask usage
 
@@ -105,6 +109,8 @@ Do not include API keys, access tokens, or private local data in a public Issue.
 
 - Thanks to [@Grivn](https://github.com/Grivn) for identifying and analyzing inherited parent context being counted as subtask usage in [#1](https://github.com/lanlandeli/dsh-usage-stats/pull/1).
 - Thanks to [@yzke](https://github.com/yzke) for proposing and implementing the Chinese and English UI adaptation in [#2](https://github.com/lanlandeli/dsh-usage-stats/pull/2).
+- Thanks to [@ogj130](https://github.com/ogj130) for the initial call-detail implementation in [#3](https://github.com/lanlandeli/dsh-usage-stats/pull/3).
+- Thanks to [@zhu637882-stack](https://github.com/zhu637882-stack) for reporting the duplicate official module risk in [#4](https://github.com/lanlandeli/dsh-usage-stats/issues/4).
 
 ## License
 

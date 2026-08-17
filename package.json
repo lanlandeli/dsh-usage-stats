@@ -1,6 +1,6 @@
 {
   "name": "dsh-usage-stats",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "Lightweight usage analytics for DeepSeek Harness — token trends, activity heatmaps, model breakdowns, and exports.",
   "author": "lanlandeli",
   "repository": {
@@ -68,14 +68,12 @@
     "@deepseek-ai/dsh-client-locale": ">=0.1.0-rc.6 <0.2.0",
     "@deepseek-ai/dsh-client-runtime": ">=0.1.0-rc.6 <0.2.0",
     "@deepseek-ai/dsh-client-ui-slots": ">=0.1.0-rc.6 <0.2.0",
+    "@deepseek-ai/dsh-home-paths": ">=0.1.0-rc.6 <0.2.0",
     "@deepseek-ai/dsh-host-webserver": ">=0.1.0-rc.6 <0.2.0",
     "@deepseek-ai/dsh-session": ">=0.1.0-rc.6 <0.2.0",
     "@deepseek-ai/dsh-session-query": ">=0.1.0-rc.6 <0.2.0",
+    "@deepseek-ai/schemastery": ">=3.18.1 <4",
     "react": "^18.2.0"
-  },
-  "dependencies": {
-    "@deepseek-ai/dsh-home-paths": "^0.1.0-rc.6",
-    "@deepseek-ai/schemastery": "^3.18.1"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
@@ -85,9 +83,11 @@
     "@deepseek-ai/dsh-client-ui-layout": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-sidebar": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-home-paths": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-session": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-session-query": "^0.1.0-rc.6",
+    "@deepseek-ai/schemastery": "^3.18.1",
     "@types/node": "^22.20.0",
     "@types/react": "~18.3.1",
     "@types/react-dom": "~18.3.1",
