@@ -12,6 +12,7 @@ DeepSeek Harness 仍处于开发者预览阶段，后续版本可能包含不兼
 
 - Host：`sessionQuery`、`session/event` 和 `webServer`；
 - Client：`sidebar.footer.action` 和 `shell.overlay` 插槽；
+- 所有 `@deepseek-ai/*` 运行时模块均声明为对等依赖，复用 Profile 提供的同一实例；
 - 不查询、监听或修改 Harness 所有的 DOM 节点。
 
 每次发布必须完成：

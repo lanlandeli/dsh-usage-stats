@@ -3,7 +3,7 @@
 All notable changes are documented here. This project follows Semantic
 Versioning while DeepSeek Harness remains in developer preview.
 
-## [Unreleased]
+## [0.1.16] - 2026-08-17
 
 ### Added
 
@@ -38,6 +38,20 @@ Versioning while DeepSeek Harness remains in developer preview.
 - Kept row corner geometry stable while hover color fades out.
 - Unified all call-detail columns on a shared left-aligned reading edge.
 - Distributed all seven call-detail columns evenly across the available width.
+
+### Fixed
+
+- Moved `@deepseek-ai/dsh-home-paths` and `@deepseek-ai/schemastery` from
+  regular dependencies to peer dependencies, preventing plugin-private copies
+  and split module identity inside a Harness profile.
+- Added a package regression check that rejects official `@deepseek-ai/*`
+  modules in regular dependencies.
+
+Thanks to [@ogj130](https://github.com/ogj130) for the initial call-detail
+implementation in [#3](https://github.com/lanlandeli/dsh-usage-stats/pull/3),
+and [@zhu637882-stack](https://github.com/zhu637882-stack) for reporting the
+official-module duplication risk in
+[#4](https://github.com/lanlandeli/dsh-usage-stats/issues/4).
 
 ## [0.1.15] - 2026-08-15
 

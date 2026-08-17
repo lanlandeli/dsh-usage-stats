@@ -55,13 +55,17 @@ dsh plugin --profile web remove dsh-usage-stats
 | 📊 **每日趋势** | 展示最近 7 天或 30 天的 Token 变化，悬停可查看指定日期的模型用量 |
 | 🔥 **活跃热力图** | 以颜色深度表示一年内各日期的 Token 用量，悬停可查看 Token 数量及调用轮次 |
 | 🎯 **范围筛选** | 支持按工作区、主任务或子任务限定统计范围 |
-| 📋 **调用明细** | 分页展示每次模型调用的响应耗时、输入/输出 Token、缓存率、模型与思考程度，支持按模型/提供商/Token 阈值筛选及每页条数切换 |
+| 📋 **调用明细** | 查看单次调用的耗时、Token、缓存率、模型与思考程度，支持筛选与分页 |
 | 💾 **数据导出** | 支持导出 CSV 或 JSON，用于归档或进一步分析 |
 | 🌐 **中英文界面** | 自动跟随 Harness 的语言设置切换中文或英文 |
 | 🎨 **主题适配** | 自动跟随 Harness 的浅色或深色主题 |
 | ⚡ **轻量运行** | 无第三方图表库、无后台轮询，减少额外的网络请求与运行开销 |
 
 ## ✅ 已修复
+
+### 官方模块重复安装风险
+
+`0.1.16` 将插件使用的 DeepSeek Harness 官方模块统一声明为对等依赖，避免 Profile 内出现插件私有副本及模块身份分裂。发布检查会阻止官方模块再次进入普通依赖。
 
 ### 子任务继承上下文重复计入
 
@@ -112,6 +116,8 @@ Harness 仍在持续更新。本文仅声明经过实际测试的运行环境；
 
 - 感谢 [@Grivn](https://github.com/Grivn) 在 [#1](https://github.com/lanlandeli/dsh-usage-stats/pull/1) 中发现并分析子任务继承上下文重复统计问题。
 - 感谢 [@yzke](https://github.com/yzke) 在 [#2](https://github.com/lanlandeli/dsh-usage-stats/pull/2) 中提出并实现中英文界面适配方案。
+- 感谢 [@ogj130](https://github.com/ogj130) 在 [#3](https://github.com/lanlandeli/dsh-usage-stats/pull/3) 中贡献调用明细功能的初始实现。
+- 感谢 [@zhu637882-stack](https://github.com/zhu637882-stack) 在 [#4](https://github.com/lanlandeli/dsh-usage-stats/issues/4) 中报告官方模块重复安装风险。
 
 ## 📜 许可证
 
