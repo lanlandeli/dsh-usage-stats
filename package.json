@@ -43,6 +43,7 @@
     "check": "npm run typecheck && npm run test && npm run build",
     "pack:check": "node scripts/check-package.mjs",
     "smoke:clean-profile": "node scripts/smoke-clean-profile.mjs",
+    "assets:capture": "node scripts/capture-assets.mjs",
     "release:check": "npm run check && npm run pack:check",
     "prepublishOnly": "npm run release:check"
   },
@@ -93,6 +94,7 @@
     "@types/react-dom": "~18.3.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "sharp": "^0.35.3",
     "tsdown": "^0.22.2",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"

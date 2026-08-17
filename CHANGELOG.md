@@ -3,6 +3,15 @@
 All notable changes are documented here. This project follows Semantic
 Versioning while DeepSeek Harness remains in developer preview.
 
+## [Unreleased]
+
+### Changed
+
+- Refreshed the light-theme demo and both full-page screenshots to show the
+  current call-detail interface with anonymous example data.
+- Added a repeatable isolated capture workflow for keeping README media in sync
+  with future dashboard updates.
+
 ## [0.1.16] - 2026-08-17
 
 ### Added
