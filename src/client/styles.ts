@@ -168,6 +168,7 @@ body[data-ds-dark-theme] .us-cell[data-level="5"] { background: #67b7ff; }
 .us-calls-clear { height: 34px; padding: 0 10px; border: 0; border-radius: 9px; color: var(--us-muted); background: transparent; cursor: pointer; font: inherit; transition: color 140ms ease, background 140ms ease; }
 .us-calls-clear:hover { color: var(--us-text); background: var(--us-hover); }
 .us-calls-page-size { min-width: 110px; }
+.us-calls-max-records { min-width: 150px; }
 .us-calls-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0 2px; font-size: 13px; }
 .us-calls-table col { width: calc(100% / 7); }
 .us-calls-table th { position: sticky; z-index: 2; top: 0; padding: 9px 10px; text-align: left; color: var(--us-muted); font-size: 12px; font-weight: 560; border-bottom: 1px solid var(--us-border); background: color-mix(in srgb, var(--us-surface) 96%, var(--us-raised)); white-space: nowrap; }
@@ -190,6 +191,7 @@ body[data-ds-dark-theme] .us-cell[data-level="5"] { background: #67b7ff; }
   .us-calls-select { flex: 1 1 180px; min-width: 0; max-width: none; }
   .us-calls-number-field { flex: 1 1 150px; width: auto; min-width: 0; }
   .us-calls-page-size { flex: 1 1 130px; }
+  .us-calls-max-records { flex: 1 1 160px; }
 }
 @media (max-width: 480px) {
   .us-calls-wrap { overflow-x: auto; }

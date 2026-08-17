@@ -299,6 +299,7 @@ export function collectCalls(sessions: Iterable<SessionSummary>, query: CallsFil
     }
   }
   rows.sort((a, b) => b.time - a.time || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+  if (rows.length > query.maxRecords) rows.length = query.maxRecords
   return rows
 }
 

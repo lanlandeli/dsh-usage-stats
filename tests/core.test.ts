@@ -230,7 +230,7 @@ describe('per-call detail (calls)', () => {
 
   it('filters calls by model, provider, and token thresholds with stable keys', () => {
     const summary = summarizeSession(header, [stepStart(1, '2026-08-01T01:00:00Z'), requestHeader(2, 'medium'), timedAssistant(3, '2026-08-01T01:00:12Z')])
-    const query = { from: '2026-08-01', to: '2026-08-02', timeZone: 'UTC', scope: 'all' as const, model: 'deepseek-chat', provider: 'deepseek', minInputTokens: 500, minOutputTokens: 100, page: 1, pageSize: 50 }
+    const query = { from: '2026-08-01', to: '2026-08-02', timeZone: 'UTC', scope: 'all' as const, model: 'deepseek-chat', provider: 'deepseek', minInputTokens: 500, minOutputTokens: 100, maxRecords: 1_000, page: 1, pageSize: 50 }
     const result = aggregateCalls([summary], query)
     expect(result.total).toBe(1)
     expect(result.items[0]?.key).toBe(`${summary.id}:3`)
@@ -249,12 +249,28 @@ describe('per-call detail (calls)', () => {
     const query = {
       from: '2026-08-01', to: '2026-08-01', timeZone: 'UTC', scope: 'all' as const,
       model: undefined, provider: undefined, minInputTokens: undefined, minOutputTokens: undefined,
-      page: 1, pageSize: 2,
+      maxRecords: 1_000, page: 1, pageSize: 2,
     }
     const first = aggregateCalls([summary], query)
     const second = aggregateCalls([summary], { ...query, page: 2 })
     expect(first.total).toBe(3)
     expect(first.items.map(item => item.seq)).toEqual([3, 2])
     expect(second.items.map(item => item.seq)).toEqual([1])
+  })
+
+  it('keeps only the configured number of newest call-detail records', () => {
+    const summary = summarizeSession(header, [
+      timedAssistant(1, '2026-08-01T01:00:00Z'),
+      timedAssistant(2, '2026-08-01T02:00:00Z'),
+      timedAssistant(3, '2026-08-01T03:00:00Z'),
+    ])
+    const result = aggregateCalls([summary], {
+      from: '2026-08-01', to: '2026-08-01', timeZone: 'UTC', scope: 'all',
+      model: undefined, provider: undefined, minInputTokens: undefined, minOutputTokens: undefined,
+      maxRecords: 2, page: 1, pageSize: 50,
+    })
+    expect(result.total).toBe(2)
+    expect(result.items.map(item => item.seq)).toEqual([3, 2])
+    expect(aggregateStats([summary], { from: '2026-08-01', to: '2026-08-01', timeZone: 'UTC', scope: 'all' }).days[0]?.calls).toBe(3)
   })
 })

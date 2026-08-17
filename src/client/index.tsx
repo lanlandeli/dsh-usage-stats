@@ -205,6 +205,8 @@ function formatEffort(value: string | null, t: (key: I18nKey) => string): string
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50]
 const PAGE_SIZE_STORAGE_KEY = 'dsh-usage-stats:calls-page-size'
+const MAX_RECORD_OPTIONS = [100, 500, 1_000, 2_000, 5_000, 10_000]
+const MAX_RECORD_STORAGE_KEY = 'dsh-usage-stats:calls-max-records'
 
 function initialPageSize(): number {
   if (typeof window === 'undefined') return 20
@@ -213,6 +215,16 @@ function initialPageSize(): number {
     return PAGE_SIZE_OPTIONS.includes(saved) ? saved : 20
   } catch {
     return 20
+  }
+}
+
+function initialMaxRecords(): number {
+  if (typeof window === 'undefined') return 1_000
+  try {
+    const saved = Number(window.localStorage.getItem(MAX_RECORD_STORAGE_KEY))
+    return MAX_RECORD_OPTIONS.includes(saved) ? saved : 1_000
+  } catch {
+    return 1_000
   }
 }
 
@@ -226,18 +238,19 @@ function CallsPanel({ snapshot, scope, workspace, days }: { snapshot: StatsSnaps
   const [debouncedMinInput, setDebouncedMinInput] = useState('')
   const [debouncedMinOutput, setDebouncedMinOutput] = useState('')
   const [pageSize, setPageSize] = useState(initialPageSize)
+  const [maxRecords, setMaxRecords] = useState(initialMaxRecords)
   const [data, setData] = useState<CallsPage | null>(null)
   const [error, setError] = useState<string | null>(null)
   const range = useMemo(() => ({ from: localDate(-(days - 1)), to: localDate() }), [days])
   const query = useMemo(() => {
-    const params = new URLSearchParams({ ...range, scope, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', page: String(page), pageSize: String(pageSize) })
+    const params = new URLSearchParams({ ...range, scope, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', page: String(page), pageSize: String(pageSize), maxRecords: String(maxRecords) })
     if (workspace) params.set('workspace', workspace)
     if (model) params.set('model', model)
     if (provider) params.set('provider', provider)
     if (debouncedMinInput !== '') params.set('minInputTokens', debouncedMinInput)
     if (debouncedMinOutput !== '') params.set('minOutputTokens', debouncedMinOutput)
     return params
-  }, [range, scope, workspace, page, pageSize, model, provider, debouncedMinInput, debouncedMinOutput])
+  }, [range, scope, workspace, page, pageSize, maxRecords, model, provider, debouncedMinInput, debouncedMinOutput])
   useEffect(() => { setPage(1) }, [scope, workspace, days])
   useEffect(() => {
     const timer = window.setTimeout(() => { setDebouncedMinInput(minInput); setDebouncedMinOutput(minOutput) }, 250)
@@ -246,6 +259,9 @@ function CallsPanel({ snapshot, scope, workspace, days }: { snapshot: StatsSnaps
   useEffect(() => {
     try { window.localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(pageSize)) } catch { /* Storage may be disabled. */ }
   }, [pageSize])
+  useEffect(() => {
+    try { window.localStorage.setItem(MAX_RECORD_STORAGE_KEY, String(maxRecords)) } catch { /* Storage may be disabled. */ }
+  }, [maxRecords])
   useEffect(() => {
     const abort = new AbortController()
     setError(null)
@@ -272,6 +288,7 @@ function CallsPanel({ snapshot, scope, workspace, days }: { snapshot: StatsSnaps
     <label className="us-calls-number-field"><input className="us-calls-number-input" type="text" inputMode="numeric" value={minOutput} aria-label={t('minOutput')} placeholder={t('minOutput')} onChange={event => { setMinOutput(event.target.value.replace(/\D/g, '')); setPage(1) }} /><span>{t('tokenUnit')}</span></label>
     {hasFilters && <button type="button" className="us-calls-clear" onClick={clearFilters}>{t('clearFilters')}</button>}
     <span className="us-spacer" />
+    <SelectControl className="us-calls-select us-calls-max-records" label={t('maxRecords', { size: maxRecords.toLocaleString(numberLocale) })} value={String(maxRecords)} options={MAX_RECORD_OPTIONS.map(value => ({ value: String(value), label: t('maxRecords', { size: value.toLocaleString(numberLocale) }) }))} onChange={value => { setMaxRecords(Number(value)); setPage(1) }} />
     <SelectControl className="us-calls-select us-calls-page-size" label={t('perPage', { size: pageSize })} value={String(pageSize)} options={PAGE_SIZE_OPTIONS.map(value => ({ value: String(value), label: t('perPage', { size: value }) }))} onChange={value => { setPageSize(Number(value)); setPage(1) }} />
   </div>{content}</section>
 }

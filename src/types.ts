@@ -55,6 +55,8 @@ export interface CallsQuery extends StatsQuery {
   minInputTokens: number | undefined
   /** Keep only calls whose output tokens are at least this value. */
   minOutputTokens: number | undefined
+  /** Maximum number of newest matching calls retained by the detail view. */
+  maxRecords: number
   page: number
   pageSize: number
 }
