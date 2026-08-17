@@ -7,6 +7,8 @@ Versioning while DeepSeek Harness remains in developer preview.
 
 ### Added
 
+- Added a remembered call-detail retention limit, defaulting to the newest
+  1,000 records with selectable limits from 100 to 10,000.
 - Added a "Call Details" panel to the dashboard: a paginated per-call list
   showing end-to-end response time, input/output tokens, cache hit rate, model,
   and reasoning effort for every assistant call.

@@ -127,6 +127,8 @@ try {
   if (!callsResponse.ok || calls.indexReady !== true || !Array.isArray(calls.items) || calls.total !== 0) {
     throw new Error('Calls endpoint contract failed')
   }
+  const invalidLimitResponse = await fetch(`${url}/usage-stats/v1/calls?${query}&maxRecords=10001`)
+  if (invalidLimitResponse.status !== 400) throw new Error('Calls retention-limit validation failed')
   const headResponse = await fetch(`${url}/usage-stats/v1/snapshot?${query}`, { method: 'HEAD' })
   if (!headResponse.ok || (await headResponse.text()) !== '') throw new Error('HEAD contract failed')
   const postResponse = await fetch(`${url}/usage-stats/v1/snapshot?${query}`, { method: 'POST' })

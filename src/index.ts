@@ -62,12 +62,14 @@ function parseQuery(req: IncomingMessage): StatsQuery {
 }
 
 /** Pagination, model/provider, and token-threshold filters for `/calls`. */
-function parsePagination(req: IncomingMessage): { page: number; pageSize: number; model: string | undefined; provider: string | undefined; minInputTokens: number | undefined; minOutputTokens: number | undefined } {
+function parsePagination(req: IncomingMessage): { page: number; pageSize: number; maxRecords: number; model: string | undefined; provider: string | undefined; minInputTokens: number | undefined; minOutputTokens: number | undefined } {
   const url = new URL(req.url ?? '/', 'http://localhost')
   const page = Number(url.searchParams.get('page') ?? '1')
   const pageSize = Number(url.searchParams.get('pageSize') ?? '50')
+  const maxRecords = Number(url.searchParams.get('maxRecords') ?? '1000')
   if (!Number.isSafeInteger(page) || page < 1 || page > 1_000_000) throw new Error('Invalid page')
   if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 200) throw new Error('Invalid page size')
+  if (!Number.isSafeInteger(maxRecords) || maxRecords < 1 || maxRecords > 10_000) throw new Error('Invalid maximum records')
   const model = url.searchParams.get('model') ?? undefined
   const provider = url.searchParams.get('provider') ?? undefined
   if (model !== undefined && model.length > 4096) throw new Error('Invalid model filter')
@@ -79,7 +81,7 @@ function parsePagination(req: IncomingMessage): { page: number; pageSize: number
     if (!Number.isSafeInteger(value) || value < 0) throw new Error(`Invalid ${name}`)
     return value
   }
-  return { page, pageSize, model, provider, minInputTokens: threshold('minInputTokens'), minOutputTokens: threshold('minOutputTokens') }
+  return { page, pageSize, maxRecords, model, provider, minInputTokens: threshold('minInputTokens'), minOutputTokens: threshold('minOutputTokens') }
 }
 
 function isCache(value: unknown): value is IndexCache {
@@ -217,6 +219,7 @@ class UsageIndex {
           provider: pagination.provider,
           minInputTokens: pagination.minInputTokens,
           minOutputTokens: pagination.minOutputTokens,
+          maxRecords: pagination.maxRecords,
         }
         const cacheKey = JSON.stringify(filter)
         if (this.callsCache?.key !== cacheKey) {
