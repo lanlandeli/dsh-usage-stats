@@ -9,6 +9,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/lanlandeli/dsh-usage-stats/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/lanlandeli/dsh-usage-stats/actions)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.19%20%7C%7C%20%3E%3D24-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![License](https://img.shields.io/npm/l/dsh-usage-stats?style=flat-square)](./LICENSE)
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
 
 dsh-usage-stats is a lightweight usage analytics plugin for the DeepSeek Harness Web UI. It presents lifetime token totals, daily trends, activity dates, and model distribution in one dashboard.
 
@@ -95,7 +96,7 @@ config:
 
 ## Compatibility
 
-The verified baseline is DeepSeek Harness `0.1.0-rc.6` with Node.js `22.19+` or `24+`. The plugin supports the official Web UI and desktop wrappers that load it.
+The verified baseline is DeepSeek Harness `0.2.1-rc.3` with Node.js `22.19+` or `24+`. The plugin supports the official Web UI and desktop wrappers that load it.
 
 Harness is evolving rapidly. Only environments tested by this project are declared as verified. See [Compatibility](./docs/COMPATIBILITY.md) for details.
 

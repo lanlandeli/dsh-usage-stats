@@ -64,7 +64,8 @@ try {
   }), 'utf8')
   const packed = await runNode(npmCli, ['pack', '--json', '--ignore-scripts', '--pack-destination', packageDir])
   const packReport = JSON.parse(packed.stdout)
-  const filename = packReport[0]?.filename
+  const pack = Array.isArray(packReport) ? packReport[0] : packReport[Object.keys(packReport)[0]]
+  const filename = pack?.filename
   if (!filename) throw new Error('npm pack did not return a filename')
   const tarball = join(packageDir, filename)
 

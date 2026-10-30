@@ -131,7 +131,7 @@ class UsageIndex {
         if (record === undefined) return
         try {
           const snapshot = await this.ctx.sessionQuery.readSession(record.header.id)
-          const incoming = summarizeSession(snapshot.session, snapshot.events)
+          const incoming = summarizeSession(snapshot.session, snapshot.events, Date.now(), Number(snapshot.inheritedEventCount))
           const current = this.sessions.get(incoming.id)
           if (current === undefined || current.lastSeq < incoming.lastSeq) {
             this.sessions.set(incoming.id, incoming)

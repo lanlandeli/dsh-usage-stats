@@ -71,12 +71,10 @@ export function activityFromEvent(event: SessionEvent, state: CollectState = new
   return activity
 }
 
-export function summarizeSession(header: SessionHeader, events: readonly SessionEvent[], indexedAt = Date.now()): SessionSummary {
-  // A forked child stores the parent's copied prefix in its own log. The
-  // durable fork boundary is header.seedLength; lifecycle markers such as
-  // session/end-seed may be appended again whenever the child is resumed and
-  // therefore cannot identify the child's original ownership boundary.
-  const firstOwnSeq = header.parentSession !== undefined ? (header.seedLength ?? 0) : 0
+export function summarizeSession(header: SessionHeader, events: readonly SessionEvent[], indexedAt = Date.now(), inheritedEventCount = 0): SessionSummary {
+  // rc.3 exposes the exact copied prefix on SessionLogSnapshot, not SessionHeader.
+  // Lifecycle markers can be appended again on resume and are not ownership boundaries.
+  const firstOwnSeq = header.parentSession !== undefined ? inheritedEventCount : 0
   const activities: ActivityRecord[] = []
   const state = newCollectState()
   for (const event of events) {
